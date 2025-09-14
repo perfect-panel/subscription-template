@@ -130,26 +130,26 @@ SubscribeInfo = title={{ .SiteName }} - {{ .SubscribeName }}, content=官方网�
 🇺🇳 Nodes = select, {{ $proxyNames }}, hidden=1
 
 [Rule]
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Apple/Apple_All.list, 🍎 Apple
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Google/Google.list, 🔍 Google
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/GitHub/GitHub.list, 🪟 Microsoft
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Microsoft/Microsoft.list, 🪟 Microsoft
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/HBO/HBO.list, 📺 GlobalMedia
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Disney/Disney.list, 📺 GlobalMedia
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/TikTok/TikTok.list, 📺 GlobalMedia
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Netflix/Netflix.list, 📺 GlobalMedia
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/GlobalMedia/GlobalMedia_All_No_Resolve.list, 📺 GlobalMedia
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Telegram/Telegram.list, 📟 Telegram
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/OpenAI/OpenAI.list, 🤖 AI
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Gemini/Gemini.list, 🤖 AI
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Copilot/Copilot.list, 🤖 AI
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Claude/Claude.list, 🤖 AI
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Crypto/Crypto.list, 🪙 Crypto
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Cryptocurrency/Cryptocurrency.list, 🪙 Crypto
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Game/Game.list, 🎮 Game
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Global/Global_All_No_Resolve.list, 🚀 Proxy
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/ChinaMax/ChinaMax_All_No_Resolve.list, 🇨🇳 China
-RULE-SET, https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Surge/Lan/Lan.list, 🎯 Direct
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Apple/Apple_All.list, 🍎 Apple
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Google/Google.list, 🔍 Google
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/GitHub/GitHub.list, 🪟 Microsoft
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Microsoft/Microsoft.list, 🪟 Microsoft
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/HBO/HBO.list, 📺 GlobalMedia
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Disney/Disney.list, 📺 GlobalMedia
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/TikTok/TikTok.list, 📺 GlobalMedia
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Netflix/Netflix.list, 📺 GlobalMedia
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/GlobalMedia/GlobalMedia_All_No_Resolve.list, 📺 GlobalMedia
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Telegram/Telegram.list, 📟 Telegram
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/OpenAI/OpenAI.list, 🤖 AI
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Gemini/Gemini.list, 🤖 AI
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Copilot/Copilot.list, 🤖 AI
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Claude/Claude.list, 🤖 AI
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Crypto/Crypto.list, 🪙 Crypto
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Cryptocurrency/Cryptocurrency.list, 🪙 Crypto
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Game/Game.list, 🎮 Game
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Global/Global_All_No_Resolve.list, 🚀 Proxy
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/ChinaMax/ChinaMax_All_No_Resolve.list, 🇨🇳 China
+RULE-SET, https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Surge/Lan/Lan.list, 🎯 Direct
 
 GEOIP, CN, 🇨🇳 China
 FINAL, 🐠 Final, dns-failed
