@@ -53,7 +53,7 @@
 
 {{- define "NodeOutbound" -}}
 {{- $proxy := .proxy -}}
-{{- $server := $proxy.Host -}}
+{{- $server := $proxy.Server -}}
 {{- $port := $proxy.Port -}}
 {{- $name := $proxy.Name -}}
 {{- $pwd := $.UserInfo.Password -}}

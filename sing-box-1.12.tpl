@@ -15,7 +15,15 @@
 
 {{- $supportedProxies := list -}}
 {{- range $proxy := .Proxies -}}
-  {{- if or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "vless") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") (eq $proxy.Type "tuic") -}}
+  {{- $isSupported := false -}}
+  {{- if or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") (eq $proxy.Type "tuic") (eq $proxy.Type "anytls") -}}
+    {{- $isSupported = true -}}
+  {{- else if eq $proxy.Type "vless" -}}
+    {{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") (eq $proxy.Transport "grpc") (eq $proxy.Transport "tcp") (not $proxy.Transport) -}}
+      {{- $isSupported = true -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $isSupported -}}
     {{- $supportedProxies = append $supportedProxies $proxy -}}
   {{- end -}}
 {{- end -}}
@@ -23,7 +31,15 @@
 {{- define "AllNodeNames" -}}
 {{- $supportedProxies := list -}}
 {{- range .Proxies -}}
-  {{- if or (eq .Type "shadowsocks") (eq .Type "vmess") (eq .Type "vless") (eq .Type "trojan") (eq .Type "hysteria2") (eq .Type "hy2") (eq .Type "tuic") -}}
+  {{- $isSupported := false -}}
+  {{- if or (eq .Type "shadowsocks") (eq .Type "vmess") (eq .Type "trojan") (eq .Type "hysteria2") (eq .Type "hy2") (eq .Type "tuic") (eq .Type "anytls") -}}
+    {{- $isSupported = true -}}
+  {{- else if eq .Type "vless" -}}
+    {{- if or (eq .Transport "ws") (eq .Transport "websocket") (eq .Transport "grpc") (eq .Transport "tcp") (not .Transport) -}}
+      {{- $isSupported = true -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $isSupported -}}
     {{- $supportedProxies = append $supportedProxies . -}}
   {{- end -}}
 {{- end -}}
@@ -40,7 +56,7 @@
 
 {{- define "NodeOutbound" -}}
 {{- $proxy := .proxy -}}
-{{- $server := $proxy.Host -}}
+{{- $server := $proxy.Server -}}
 {{- $port := $proxy.Port -}}
 {{- $name := $proxy.Name -}}
 {{- $pwd := $.UserInfo.Password -}}
@@ -145,7 +161,20 @@
 { "type": "tuic", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "uuid": "{{ $tuicServerKey }}", "password": "{{ $pwd }}"{{ $tuicOpts }}, "alpn": ["h3"], {{ $tlsOpts }} }
 
 {{- else if eq $proxy.Type "anytls" -}}
-{ "type": "anytls", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "password": "{{ $pwd }}", {{ $tlsOpts }} }
+{{- $anytlsOpts := "" -}}
+{{- if $proxy.Method -}}
+  {{- $anytlsOpts = printf "%s, \"method\": \"%s\"" $anytlsOpts ($proxy.Method) -}}
+{{- end -}}
+{{- if $proxy.ObfsPassword -}}
+  {{- $anytlsOpts = printf "%s, \"obfs\": \"%s\"" $anytlsOpts ($proxy.ObfsPassword) -}}
+{{- end -}}
+{{- if $proxy.Path -}}
+  {{- $anytlsOpts = printf "%s, \"path\": \"%s\"" $anytlsOpts ($proxy.Path) -}}
+{{- end -}}
+{{- if $proxy.Host -}}
+  {{- $anytlsOpts = printf "%s, \"host\": \"%s\"" $anytlsOpts ($proxy.Host) -}}
+{{- end -}}
+{ "type": "anytls", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "password": "{{ $pwd }}"{{ $anytlsOpts }}{{ if $tlsOpts }}, {{ $tlsOpts }}{{ end }} }
 
 {{- else if eq $proxy.Type "wireguard" -}}
 {{- $wgPrivateKey := $proxy.ServerKey -}}
@@ -337,7 +366,15 @@
     },
     {{- $supportedProxies := list -}}
     {{- range $proxy := .Proxies -}}
-      {{- if or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "vless") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") (eq $proxy.Type "tuic") -}}
+      {{- $isSupported := false -}}
+      {{- if or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") (eq $proxy.Type "tuic") (eq $proxy.Type "anytls") -}}
+        {{- $isSupported = true -}}
+      {{- else if eq $proxy.Type "vless" -}}
+        {{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") (eq $proxy.Transport "grpc") (eq $proxy.Transport "tcp") (not $proxy.Transport) -}}
+          {{- $isSupported = true -}}
+        {{- end -}}
+      {{- end -}}
+      {{- if $isSupported -}}
         {{- $supportedProxies = append $supportedProxies $proxy -}}
       {{- end -}}
     {{- end -}}
