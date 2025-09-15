@@ -15,39 +15,42 @@
 
 {{- $supportedProxies := list -}}
 {{- range $proxy := .Proxies -}}
-  {{- if or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "vless") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") (eq $proxy.Type "tuic") -}}
+  {{- $isSupported := false -}}
+  {{- if or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") (eq $proxy.Type "tuic") -}}
+    {{- $isSupported = true -}}
+  {{- else if eq $proxy.Type "vless" -}}
+    {{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") (eq $proxy.Transport "httpupgrade") (eq $proxy.Transport "grpc") (eq $proxy.Transport "tcp") (not $proxy.Transport) -}}
+      {{- $isSupported = true -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $isSupported -}}
     {{- $supportedProxies = append $supportedProxies $proxy -}}
   {{- end -}}
 {{- end -}}
 
-{{- $proxyNames := "" -}}
-{{- if gt (len $supportedProxies) 0 -}}
-  {{- range $proxy := $supportedProxies -}}
-    {{- if eq $proxyNames "" -}}
-      {{- $proxyNames = printf "\"%s\"" $proxy.Name -}}
-    {{- else -}}
-      {{- $proxyNames = printf "%s, \"%s\"" $proxyNames $proxy.Name -}}
+{{- define "AllNodeNames" -}}
+{{- $supportedProxies := list -}}
+{{- range .Proxies -}}
+  {{- $isSupported := false -}}
+  {{- if or (eq .Type "shadowsocks") (eq .Type "vmess") (eq .Type "trojan") (eq .Type "hysteria2") (eq .Type "hy2") (eq .Type "tuic") -}}
+    {{- $isSupported = true -}}
+  {{- else if eq .Type "vless" -}}
+    {{- if or (eq .Transport "ws") (eq .Transport "websocket") (eq .Transport "httpupgrade") (eq .Transport "grpc") (eq .Transport "tcp") (not .Transport) -}}
+      {{- $isSupported = true -}}
     {{- end -}}
   {{- end -}}
-  {{- $proxyNames = printf ", %s" $proxyNames -}}
+  {{- if $isSupported -}}
+    {{- $supportedProxies = append $supportedProxies . -}}
+  {{- end -}}
 {{- end -}}
-
-{{- define "AllNodeNames" -}}
 {{- $first := true -}}
-{{- range .Proxies -}}
+{{- range $supportedProxies -}}
   {{- if $first -}}
     "{{ .Name }}"
     {{- $first = false -}}
   {{- else -}}
     , "{{ .Name }}"
   {{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{- define "AllNodeNamesWithQuotes" -}}
-{{- range $i, $proxy := .Proxies -}}
-  {{- if $i }}, {{ end -}}
-  "{{ $proxy.Name }}"
 {{- end -}}
 {{- end -}}
 
@@ -83,102 +86,41 @@
     {{- $transportOpts = printf "%s, \"headers\": {\"Host\": \"%s\"}" $transportOpts ($proxy.Host) -}}
   {{- end -}}
   {{- $transportOpts = printf "%s}" $transportOpts -}}
+{{- else if eq $proxy.Transport "httpupgrade" -}}
+  {{- $wsPath := default "/" $proxy.Path -}}
+  {{- $transportOpts = printf "\"transport\": {\"type\": \"httpupgrade\", \"path\": \"%s\"" $wsPath -}}
+  {{- if $proxy.Host -}}
+    {{- $transportOpts = printf "%s, \"headers\": {\"Host\": \"%s\"}" $transportOpts ($proxy.Host) -}}
+  {{- end -}}
+  {{- $transportOpts = printf "%s}" $transportOpts -}}
 {{- else if eq $proxy.Transport "grpc" -}}
   {{- $grpcService := default "grpc" $svc -}}
   {{- $transportOpts = printf "\"transport\": {\"type\": \"grpc\", \"service_name\": \"%s\"}" $grpcService -}}
 {{- end -}}
 
 {{- if eq $proxy.Type "shadowsocks" -}}
-  {{- $method := default "aes-128-gcm" $proxy.Method -}}
-  {{- $password := $pwd -}}
-  {{- if $proxy.ServerKey -}}
-    {{- $needBytes := ternary 16 32 (eq $proxy.Method "2022-blake3-aes-128-gcm") -}}
-    {{- $cutLen := min $needBytes (len $pwd) | int -}}
-    {{- $userCut := $pwd | trunc $cutLen -}}
-    {{- $serverB64 := b64enc $proxy.ServerKey -}}
-    {{- $userB64 := b64enc $userCut -}}
-    {{- $password = printf "%s:%s" $serverB64 $userB64 -}}
-  {{- end -}}
-{ "type": "shadowsocks", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "method": "{{ $method }}", "password": "{{ $password }}" }
+{ "type": "shadowsocks", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "method": "{{ default "aes-128-gcm" $proxy.Method }}", "password": "{{ $pwd }}" }
 
 {{- else if eq $proxy.Type "trojan" -}}
 { "type": "trojan", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "password": "{{ $pwd }}"{{ if $transportOpts }}, {{ $transportOpts }}{{ end }}, {{ $tlsOpts }} }
 
 {{- else if eq $proxy.Type "vless" -}}
-{{- $realityOpts := "" -}}
-{{- if $proxy.RealityPublicKey -}}
-  {{- $realityOpts = printf "\"reality\": { \"enabled\": true, \"public_key\": \"%s\"" ($proxy.RealityPublicKey) -}}
-  {{- if $proxy.RealityShortId -}}
-    {{- $realityOpts = printf "%s, \"short_id\": \"%s\"" $realityOpts ($proxy.RealityShortId) -}}
-  {{- end -}}
-  {{- if $svc -}}
-    {{- $realityOpts = printf "%s, \"server_name\": \"%s\"" $realityOpts ($svc) -}}
-  {{- end -}}
-  {{- $realityOpts = printf "%s }" $realityOpts -}}
-{{- end -}}
-{{- $flowOpts := "" -}}
-{{- if $proxy.Flow -}}
-  {{- $flowOpts = printf ", \"flow\": \"%s\"" ($proxy.Flow) -}}
-{{- end -}}
-{ "type": "vless", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "uuid": "{{ $pwd }}"{{ $flowOpts }}{{ if $transportOpts }}, {{ $transportOpts }}{{ end }}{{ if $realityOpts }}, {{ $realityOpts }}{{ else if $tlsOpts }}, {{ $tlsOpts }}{{ end }} }
+{ "type": "vless", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "uuid": "{{ $pwd }}"{{ if $transportOpts }}, {{ $transportOpts }}{{ end }}{{ if $tlsOpts }}, {{ $tlsOpts }}{{ end }} }
 
 {{- else if eq $proxy.Type "vmess" -}}
 { "type": "vmess", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "uuid": "{{ $pwd }}", "security": "auto"{{ if $transportOpts }}, {{ $transportOpts }}{{ end }}{{ if $tlsOpts }}, {{ $tlsOpts }}{{ end }} }
 
 {{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") -}}
-{{- $obfsOpts := "" -}}
-{{- if $proxy.ObfsPassword -}}
-  {{- $obfsOpts = printf "\"obfs\": { \"type\": \"salamander\", \"password\": \"%s\" }" ($proxy.ObfsPassword) -}}
-{{- end -}}
-{{- $hopPortsOpts := "" -}}
-{{- if $proxy.HopPorts -}}
-  {{- $hopPortsOpts = printf ", \"ports\": \"%s\"" ($proxy.HopPorts) -}}
-{{- end -}}
-{{- $hopIntervalOpts := "" -}}
-{{- if $proxy.HopInterval -}}
-  {{- $hopIntervalOpts = printf ", \"hop_interval\": %v" $proxy.HopInterval -}}
-{{- end -}}
-{ "type": "hysteria2", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "password": "{{ $pwd }}"{{ if $obfsOpts }}, {{ $obfsOpts }}{{ end }}{{ $hopPortsOpts }}{{ $hopIntervalOpts }}, {{ $tlsOpts }} }
+{ "type": "hysteria2", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "password": "{{ $pwd }}", {{ $tlsOpts }} }
 
 {{- else if eq $proxy.Type "tuic" -}}
-{{- $tuicServerKey := $proxy.ServerKey -}}
-{{- $tuicOpts := "" -}}
-{{- if $proxy.DisableSNI -}}
-  {{- $tuicOpts = printf "%s, \"disable_sni\": %v" $tuicOpts $proxy.DisableSNI -}}
-{{- end -}}
-{{- if $proxy.ReduceRtt -}}
-  {{- $tuicOpts = printf "%s, \"reduce_rtt\": %v" $tuicOpts $proxy.ReduceRtt -}}
-{{- end -}}
-{{- if $proxy.UDPRelayMode -}}
-  {{- $tuicOpts = printf "%s, \"udp_relay_mode\": \"%s\"" $tuicOpts ($proxy.UDPRelayMode) -}}
-{{- end -}}
-{{- if $proxy.CongestionController -}}
-  {{- $tuicOpts = printf "%s, \"congestion_control\": \"%s\"" $tuicOpts ($proxy.CongestionController) -}}
-{{- end -}}
-{ "type": "tuic", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "uuid": "{{ $tuicServerKey }}", "password": "{{ $pwd }}"{{ $tuicOpts }}, "alpn": ["h3"], {{ $tlsOpts }} }
-
-{{- else if eq $proxy.Type "anytls" -}}
-{ "type": "anytls", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "password": "{{ $pwd }}", {{ $tlsOpts }} }
+{ "type": "tuic", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "uuid": "{{ $proxy.ServerKey }}", "password": "{{ $pwd }}", "alpn": ["h3"], {{ $tlsOpts }} }
 
 {{- else if eq $proxy.Type "wireguard" -}}
-{{- $wgPrivateKey := $proxy.ServerKey -}}
-{{- $wgPublicKey := $proxy.RealityPublicKey -}}
-{{- $wgPreSharedOpts := "" -}}
-{{- if $proxy.Path -}}
-  {{- $wgPreSharedOpts = printf ", \"pre_shared_key\": \"%s\"" ($proxy.Path) -}}
-{{- end -}}
-{{- $wgLocalAddressOpts := "" -}}
-{{- if $proxy.RealityServerAddr -}}
-  {{- $wgLocalAddressOpts = printf ", \"local_address\": [\"%s\"]" ($proxy.RealityServerAddr) -}}
-{{- end -}}
-{ "type": "wireguard", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "private_key": "{{ $wgPrivateKey }}", "peer_public_key": "{{ $wgPublicKey }}"{{ $wgPreSharedOpts }}{{ $wgLocalAddressOpts }} }
+{ "type": "wireguard", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "private_key": "{{ $proxy.ServerKey }}", "peer_public_key": "{{ $proxy.RealityPublicKey }}" }
 
 {{- else if or (eq $proxy.Type "http") (eq $proxy.Type "https") -}}
-{{- $httpsTLSOpts := "" -}}
-{{- if and (eq $proxy.Type "https") $tlsOpts -}}
-  {{- $httpsTLSOpts = printf ", %s" $tlsOpts -}}
-{{- end -}}
-{ "type": "http", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "username": "{{ $pwd }}", "password": "{{ $pwd }}"{{ $httpsTLSOpts }} }
+{ "type": "http", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "username": "{{ $pwd }}", "password": "{{ $pwd }}"{{ if eq $proxy.Type "https" }}, {{ $tlsOpts }}{{ end }} }
 
 {{- else if or (eq $proxy.Type "socks") (eq $proxy.Type "socks5") -}}
 { "type": "socks", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "version": "5", "username": "{{ $pwd }}", "password": "{{ $pwd }}" }
@@ -188,6 +130,7 @@
 {{- end -}}
 {{- end -}}
 
+// 用户信息: 已用流量 {{ $used }}GB / 总流量 {{ $total }}GB, 过期时间: {{ $exp }}
 {
   "log": {
     "level": "info",
