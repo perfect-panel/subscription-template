@@ -57,6 +57,9 @@
 {{- define "NodeOutbound" -}}
 {{- $proxy := .proxy -}}
 {{- $server := $proxy.Server -}}
+{{- if and (contains ":" $proxy.Server) (not (hasPrefix "[" $proxy.Server)) -}}
+  {{- $server = printf "[%s]" $proxy.Server -}}
+{{- end -}}
 {{- $port := $proxy.Port -}}
 {{- $name := $proxy.Name -}}
 {{- $pwd := $.UserInfo.Password -}}

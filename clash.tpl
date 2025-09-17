@@ -65,7 +65,7 @@ dns:
 proxies:
 {{- range $proxy := $supportedProxies }}
   {{- $server := $proxy.Server -}}
-  {{- if and (contains $proxy.Server ":") (not (hasPrefix "[" $proxy.Server)) -}}
+  {{- if and (contains ":" $proxy.Server) (not (hasPrefix "[" $proxy.Server)) -}}
     {{- $server = printf "[%s]" $proxy.Server -}}
   {{- end -}}
 
