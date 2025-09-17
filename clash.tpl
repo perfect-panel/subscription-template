@@ -14,18 +14,22 @@
 {{- end -}}
 
 {{- $supportedProxies := list -}}
+{{- $seenNames := dict -}}
 {{- range $proxy := .Proxies -}}
   {{- if or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "vless") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "tuic") (eq $proxy.Type "anytls") -}}
-    {{- $supportedProxies = append $supportedProxies $proxy -}}
+    {{- if not (hasKey $seenNames $proxy.Name) -}}
+      {{- $supportedProxies = append $supportedProxies $proxy -}}
+      {{- $seenNames = set $seenNames $proxy.Name true -}}
+    {{- end -}}
   {{- end -}}
 {{- end -}}
 
 {{- $proxyNames := "" -}}
 {{- range $proxy := $supportedProxies -}}
   {{- if eq $proxyNames "" -}}
-    {{- $proxyNames = $proxy.Name -}}
+    {{- $proxyNames = printf "%q" $proxy.Name -}}
   {{- else -}}
-    {{- $proxyNames = printf "%s, %s" $proxyNames $proxy.Name -}}
+    {{- $proxyNames = printf "%s, %q" $proxyNames $proxy.Name -}}
   {{- end -}}
 {{- end -}}
 
@@ -52,7 +56,7 @@ dns:
   ipv6: true
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
-  fake-ip-filter: ['*.lan', lens.l.google.com, '*.srv.nintendo.net', '*.stun.playstation.net', 'xbox.*.*.microsoft.com', '*.xboxlive.com', '*.msftncsi.com', '*.msftconnecttest.com']
+  fake-ip-filter: ['*.lan', 'lens.l.google.com', '*.srv.nintendo.net', '*.stun.playstation.net', 'xbox.*.*.microsoft.com', '*.xboxlive.com', '*.msftncsi.com', '*.msftconnecttest.com']
   default-nameserver: [119.29.29.29, 223.5.5.5]
   nameserver: [system, 119.29.29.29, 223.5.5.5]
   fallback: [8.8.8.8, 1.1.1.1]
