@@ -3,19 +3,41 @@
 {{- $traffic := (.UserInfo.Traffic | default 0 | float64) -}}
 {{- $total := printf "%.2f" (divf $traffic $GiB) -}}
 
-{{- $exp := "" -}}
+{{- $ExpiredAt := "" -}}
 {{- $expStr := printf "%v" .UserInfo.ExpiredAt -}}
 {{- if regexMatch `^[0-9]+$` $expStr -}}
   {{- $ts := $expStr | float64 -}}
   {{- $sec := ternary (divf $ts 1000.0) $ts (ge (len $expStr) 13) -}}
-  {{- $exp = (date "2006-01-02 15:04:05" (unixEpoch ($sec | int64))) -}}
+  {{- $ExpiredAt = (date "2006-01-02 15:04:05" (unixEpoch ($sec | int64))) -}}
 {{- else -}}
-  {{- $exp = $expStr -}}
+  {{- $ExpiredAt = $expStr -}}
 {{- end -}}
 
+{{- $sortConfig := dict "Sort" "asc" -}}
+{{- $byKey := dict -}}
+{{- range $p := .Proxies -}}
+  {{- $keyParts := list -}}
+  {{- range $field, $order := $sortConfig -}}
+    {{- $val := default "" (printf "%v" (index $p $field)) -}}
+    {{- if or (eq $field "Sort") (eq $field "Port") -}}
+      {{- $val = printf "%08d" (int (default 0 (index $p $field))) -}}
+    {{- end -}}
+    {{- if eq $order "desc" -}}
+      {{- $val = printf "~%s" $val -}}
+    {{- end -}}
+    {{- $keyParts = append $keyParts $val -}}
+  {{- end -}}
+  {{- $_ := set $byKey (join "|" $keyParts) $p -}}
+{{- end -}}
+{{- $sorted := list -}}
+{{- range $k := sortAlpha (keys $byKey) -}}
+  {{- $sorted = append $sorted (index $byKey $k) -}}
+{{- end -}}
+
+{{- $supportSet := dict "shadowsocks" true "vmess" true "trojan" true "hysteria2" true "hysteria" true "tuic" true -}}
 {{- $supportedProxies := list -}}
-{{- range $proxy := .Proxies -}}
-  {{- if or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "tuic") -}}
+{{- range $proxy := $sorted -}}
+  {{- if hasKey $supportSet $proxy.Type -}}
     {{- $supportedProxies = append $supportedProxies $proxy -}}
   {{- end -}}
 {{- end -}}
@@ -29,7 +51,11 @@
   {{- end -}}
 {{- end -}}
 
-#!MANAGED-CONFIG {{ .UserInfo.SubscribeURL }} interval=86400
+# {{ .SiteName }}-{{ .SubscribeName }}
+# Traffic: {{ $used }} GiB/{{ $total }} GiB | Expires: {{ $ExpiredAt }}
+# Generated at: {{ now | date "2006-01-02 15:04:05" }}
+
+#!MANAGED-CONFIG {{ .UserInfo.SubscribeURL }} interval=86400 strict=true
 
 [General]
 loglevel = notify
@@ -41,7 +67,7 @@ udp-policy-not-supported-behaviour = reject
 ipv6 = true
 ipv6-vif = auto
 proxy-test-url = http://www.gstatic.com/generate_204
-internet-test-url = http://connectivitycheck.platform.hicloud.com/generate_204
+internet-test-url = http://www.gstatic.com/generate_204
 test-timeout = 5
 dns-server = system, 119.29.29.29, 223.5.5.5
 encrypted-dns-server = https://dns.alidns.com/dns-query
@@ -60,21 +86,15 @@ wifi-access-http-port = 6088
 wifi-access-socks5-port = 6089
 
 [Panel]
-SubscribeInfo = title={{ .SiteName }} - {{ .SubscribeName }}, content=官方网站: perlnk.com \n已用流量: {{ $used }} GiB/{{ $total }} GiB \n到期时间: {{ $exp }}, style=info
+SubscribeInfo = title={{ .SiteName }} - {{ .SubscribeName }}, content=已用流量: {{ $used }} GiB/{{ $total }} GiB \n到期时间: {{ $ExpiredAt}}, style=info
 
 [Proxy]
 {{- range $proxy := $supportedProxies }}
-  {{- $server := $proxy.Server -}}
-  {{- if and (contains ":" $proxy.Server) (not (hasPrefix "[" $proxy.Server)) -}}
-    {{- $server = printf "[%s]" $proxy.Server -}}
-  {{- end -}}
+  {{- $common := "udp-relay=true, tfo=true" -}}
 
-  {{- $sni := default "" $proxy.SNI -}}
-  {{- if eq $sni "" -}}
-    {{- $sni = default "" $proxy.Host -}}
-  {{- end -}}
-  {{- if and (eq $sni "") (not (or (regexMatch "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$" $proxy.Server) (contains $proxy.Server ":"))) -}}
-    {{- $sni = $proxy.Server -}}
+  {{- $server := $proxy.Server -}}
+  {{- if and (contains $server ":") (not (hasPrefix "[" $server)) -}}
+    {{- $server = printf "[%s]" $server -}}
   {{- end -}}
 
   {{- $password := $.UserInfo.Password -}}
@@ -90,24 +110,24 @@ SubscribeInfo = title={{ .SiteName }} - {{ .SubscribeName }}, content=官方网�
     {{- end -}}
   {{- end -}}
 
-  {{- $common := "udp-relay=true, tfo=true" -}}
+  {{- $SkipVerify := $proxy.AllowInsecure -}}
 
   {{- if eq $proxy.Type "shadowsocks" }}
-{{ $proxy.Name }} = ss, {{ $server }}, {{ $proxy.Port }}, encrypt-method={{ default "aes-128-gcm" $proxy.Method }}, password={{ $password }}{{- if ne (default "" $proxy.Transport) "" }}, obfs={{ $proxy.Transport }}, obfs-host={{ $sni }}{{- end }}, {{ $common }}
+{{ $proxy.Name }} = ss, {{ $server }}, {{ $proxy.Port }}, encrypt-method={{ default "aes-128-gcm" $proxy.Method }}, password={{ $password }}{{- if ne (default "" $proxy.Obfs) "" }}, obfs={{ $proxy.Obfs }}{{- if ne (default "" $proxy.ObfsHost) "" }}, obfs-host={{ $proxy.ObfsHost }}{{- end }}{{- end }}, {{ $common }}
   {{- else if eq $proxy.Type "vmess" }}
-{{ $proxy.Name }} = vmess, {{ $server }}, {{ $proxy.Port }}, username={{ $password }}{{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") }}, ws=true{{- if ne (default "" $proxy.Path) "" }}, ws-path={{ $proxy.Path }}{{- end }}{{- if ne (default "" $proxy.Host) "" }}, ws-headers="Host:{{ $proxy.Host }}"{{- end }}{{- else if eq $proxy.Transport "grpc" }}, grpc=true{{- if ne (default "" $proxy.ServiceName) "" }}, grpc-service-name={{ $proxy.ServiceName }}{{- end }}{{- end }}{{- if or (eq $proxy.Security "tls") (eq $proxy.Security "reality") }}, tls=true{{- end }}{{- if ne $sni "" }}, sni={{ $sni }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}{{- if ne (default "" $proxy.Fingerprint) "" }}, fingerprint={{ $proxy.Fingerprint }}{{- end }}, {{ $common }}
+{{ $proxy.Name }} = vmess, {{ $server }}, {{ $proxy.Port }}, username={{ $password }}{{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") }}, ws=true{{- if ne (default "" $proxy.Path) "" }}, ws-path={{ $proxy.Path }}{{- end }}{{- if ne (default "" $proxy.Host) "" }}, ws-headers="Host:{{ $proxy.Host }}"{{- end }}{{- else if eq $proxy.Transport "grpc" }}, grpc=true{{- if ne (default "" $proxy.ServiceName) "" }}, grpc-service-name={{ $proxy.ServiceName }}{{- end }}{{- end }}{{- if or (eq $proxy.Security "tls") (eq $proxy.Security "reality") }}, tls=true{{- end }}{{- if ne (default "" $proxy.SNI) "" }}, sni={{ $proxy.SNI }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}{{- if ne (default "" $proxy.Fingerprint) "" }}, fingerprint={{ $proxy.Fingerprint }}{{- end }}, {{ $common }}
   {{- else if eq $proxy.Type "vless" }}
-{{ $proxy.Name }} = vless, {{ $server }}, {{ $proxy.Port }}, username={{ $password }}{{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") }}, ws=true{{- if ne (default "" $proxy.Path) "" }}, ws-path={{ $proxy.Path }}{{- end }}{{- if ne (default "" $proxy.Host) "" }}, ws-headers="Host:{{ $proxy.Host }}"{{- end }}{{- else if eq $proxy.Transport "grpc" }}, grpc=true{{- if ne (default "" $proxy.ServiceName) "" }}, grpc-service-name={{ $proxy.ServiceName }}{{- end }}{{- end }}{{- if ne $sni "" }}, sni={{ $sni }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}{{- if ne (default "" $proxy.Flow) "" }}, flow={{ $proxy.Flow }}{{- end }}, {{ $common }}
+{{ $proxy.Name }} = vless, {{ $server }}, {{ $proxy.Port }}, username={{ $password }}{{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") }}, ws=true{{- if ne (default "" $proxy.Path) "" }}, ws-path={{ $proxy.Path }}{{- end }}{{- if ne (default "" $proxy.Host) "" }}, ws-headers="Host:{{ $proxy.Host }}"{{- end }}{{- else if eq $proxy.Transport "grpc" }}, grpc=true{{- if ne (default "" $proxy.ServiceName) "" }}, grpc-service-name={{ $proxy.ServiceName }}{{- end }}{{- end }}{{- if ne (default "" $proxy.SNI) "" }}, sni={{ $proxy.SNI }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}{{- if ne (default "" $proxy.Flow) "none" }}, flow={{ $proxy.Flow }}{{- end }}, {{ $common }}
   {{- else if eq $proxy.Type "trojan" }}
-{{ $proxy.Name }} = trojan, {{ $server }}, {{ $proxy.Port }}, password={{ $password }}{{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") }}, ws=true{{- if ne (default "" $proxy.Path) "" }}, ws-path={{ $proxy.Path }}{{- end }}{{- if ne (default "" $proxy.Host) "" }}, ws-headers="Host:{{ $proxy.Host }}"{{- end }}{{- else if eq $proxy.Transport "grpc" }}, grpc=true{{- if ne (default "" $proxy.ServiceName) "" }}, grpc-service-name={{ $proxy.ServiceName }}{{- end }}{{- end }}{{- if ne $sni "" }}, sni={{ $sni }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}{{- if ne (default "" $proxy.Fingerprint) "" }}, fingerprint={{ $proxy.Fingerprint }}{{- end }}, {{ $common }}
-  {{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") }}
-{{ $proxy.Name }} = hysteria2, {{ $server }}, {{ $proxy.Port }}, password={{ $password }}{{- if ne $sni "" }}, sni={{ $sni }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}{{- if ne (default "" $proxy.ObfsPassword) "" }}, obfs=salamander, obfs-password={{ $proxy.ObfsPassword }}{{- end }}{{- if ne (default "" $proxy.HopPorts) "" }}, ports={{ $proxy.HopPorts }}{{- end }}{{- if ne (default 0 $proxy.HopInterval) 0 }}, hop-interval={{ $proxy.HopInterval }}{{- end }}, {{ $common }}
+{{ $proxy.Name }} = trojan, {{ $server }}, {{ $proxy.Port }}, password={{ $password }}{{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") }}, ws=true{{- if ne (default "" $proxy.Path) "" }}, ws-path={{ $proxy.Path }}{{- end }}{{- if ne (default "" $proxy.Host) "" }}, ws-headers="Host:{{ $proxy.Host }}"{{- end }}{{- else if eq $proxy.Transport "grpc" }}, grpc=true{{- if ne (default "" $proxy.ServiceName) "" }}, grpc-service-name={{ $proxy.ServiceName }}{{- end }}{{- end }}{{- if ne (default "" $proxy.SNI) "" }}, sni={{ $proxy.SNI }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}{{- if ne (default "" $proxy.Fingerprint) "" }}, fingerprint={{ $proxy.Fingerprint }}{{- end }}, {{ $common }}
+  {{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hysteria") }}
+{{ $proxy.Name }} = hysteria2, {{ $server }}, {{ $proxy.Port }}, password={{ $password }}{{- if ne (default "" $proxy.SNI) "" }}, sni={{ $proxy.SNI }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}{{- if ne (default "" $proxy.ObfsPassword) "" }}, obfs=salamander, obfs-password={{ $proxy.ObfsPassword }}{{- end }}{{- if ne (default "" $proxy.HopPorts) "" }}, ports={{ $proxy.HopPorts }}{{- end }}{{- if ne (default 0 $proxy.HopInterval) 0 }}, hop-interval={{ $proxy.HopInterval }}{{- end }}, {{ $common }}
   {{- else if eq $proxy.Type "tuic" }}
-{{ $proxy.Name }} = tuic, {{ $server }}, {{ $proxy.Port }}, uuid={{ default "" $proxy.ServerKey }}, password={{ $password }}{{- if ne $sni "" }}, sni={{ $sni }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}{{- if $proxy.DisableSNI }}, disable-sni=true{{- end }}{{- if $proxy.ReduceRtt }}, reduce-rtt=true{{- end }}{{- if ne (default "" $proxy.UDPRelayMode) "" }}, udp-relay-mode={{ $proxy.UDPRelayMode }}{{- end }}{{- if ne (default "" $proxy.CongestionController) "" }}, congestion-controller={{ $proxy.CongestionController }}{{- end }}, {{ $common }}
+{{ $proxy.Name }} = tuic, {{ $server }}, {{ $proxy.Port }}, uuid={{ default "" $proxy.ServerKey }}, password={{ $password }}{{- if ne (default "" $proxy.SNI) "" }}, sni={{ $proxy.SNI }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}{{- if $proxy.DisableSNI }}, disable-sni=true{{- end }}{{- if $proxy.ReduceRtt }}, reduce-rtt=true{{- end }}{{- if ne (default "" $proxy.UDPRelayMode) "" }}, udp-relay-mode={{ $proxy.UDPRelayMode }}{{- end }}{{- if ne (default "" $proxy.CongestionController) "" }}, congestion-controller={{ $proxy.CongestionController }}{{- end }}, {{ $common }}
   {{- else if eq $proxy.Type "wireguard" }}
 {{ $proxy.Name }} = wireguard, {{ $server }}, {{ $proxy.Port }}, private-key={{ default "" $proxy.ServerKey }}, public-key={{ default "" $proxy.RealityPublicKey }}{{- if ne (default "" $proxy.Path) "" }}, preshared-key={{ $proxy.Path }}{{- end }}{{- if ne (default "" $proxy.RealityServerAddr) "" }}, ip={{ $proxy.RealityServerAddr }}{{- end }}{{- if ne (default 0 $proxy.RealityServerPort) 0 }}, ipv6={{ $proxy.RealityServerPort }}{{- end }}, {{ $common }}
   {{- else if eq $proxy.Type "anytls" }}
-{{ $proxy.Name }} = anytls, {{ $server }}, {{ $proxy.Port }}, password={{ $password }}{{- if ne $sni "" }}, sni={{ $sni }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}, {{ $common }}
+{{ $proxy.Name }} = anytls, {{ $server }}, {{ $proxy.Port }}, password={{ $password }}{{- if ne (default "" $proxy.SNI) "" }}, sni={{ $proxy.SNI }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}, {{ $common }}
   {{- else }}
 {{ $proxy.Name }} = {{ $proxy.Type }}, {{ $server }}, {{ $proxy.Port }}, {{ $common }}
   {{- end }}
@@ -159,7 +179,7 @@ FINAL, 🐠 Final, dns-failed
 ^https?:\/\/(www.)?google\.cn https://www.google.com 302
 
 {{- range $proxy := $supportedProxies }}
-  {{- if not (or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "tuic")) }}
+  {{- if not (or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "hysteria") (eq $proxy.Type "tuic")) }}
 # Skipped (unsupported by Surge): {{ $proxy.Name }} ({{ $proxy.Type }})
   {{- end }}
 {{- end }}

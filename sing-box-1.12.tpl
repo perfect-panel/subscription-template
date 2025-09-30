@@ -3,60 +3,54 @@
 {{- $traffic := (.UserInfo.Traffic | default 0 | float64) -}}
 {{- $total := printf "%.2f" (divf $traffic $GiB) -}}
 
-{{- $exp := "" -}}
+{{- $ExpiredAt := "" -}}
 {{- $expStr := printf "%v" .UserInfo.ExpiredAt -}}
 {{- if regexMatch `^[0-9]+$` $expStr -}}
   {{- $ts := $expStr | float64 -}}
   {{- $sec := ternary (divf $ts 1000.0) $ts (ge (len $expStr) 13) -}}
-  {{- $exp = (date "2006-01-02 15:04:05" (unixEpoch ($sec | int64))) -}}
+  {{- $ExpiredAt = (date "2006-01-02 15:04:05" (unixEpoch ($sec | int64))) -}}
 {{- else -}}
-  {{- $exp = $expStr -}}
+  {{- $ExpiredAt = $expStr -}}
 {{- end -}}
 
-{{- $supportedProxies := list -}}
-{{- $usedNames := dict -}}
-{{- range $proxy := .Proxies -}}
-  {{- $isSupported := false -}}
-  {{- if or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") (eq $proxy.Type "tuic") (eq $proxy.Type "anytls") -}}
-    {{- $isSupported = true -}}
-  {{- else if eq $proxy.Type "vless" -}}
-    {{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") (eq $proxy.Transport "grpc") (eq $proxy.Transport "tcp") (not $proxy.Transport) -}}
-      {{- $isSupported = true -}}
+{{- $sortConfig := dict "Sort" "asc" -}}
+{{- $byKey := dict -}}
+{{- range $p := .Proxies -}}
+  {{- $keyParts := list -}}
+  {{- range $field, $order := $sortConfig -}}
+    {{- $val := default "" (printf "%v" (index $p $field)) -}}
+    {{- if or (eq $field "Sort") (eq $field "Port") -}}
+      {{- $val = printf "%08d" (int (default 0 (index $p $field))) -}}
     {{- end -}}
+    {{- if eq $order "desc" -}}
+      {{- $val = printf "~%s" $val -}}
+    {{- end -}}
+    {{- $keyParts = append $keyParts $val -}}
   {{- end -}}
-  {{- if and $isSupported (not (hasKey $usedNames $proxy.Name)) -}}
+  {{- $_ := set $byKey (join "|" $keyParts) $p -}}
+{{- end -}}
+{{- $sorted := list -}}
+{{- range $k := sortAlpha (keys $byKey) -}}
+  {{- $sorted = append $sorted (index $byKey $k) -}}
+{{- end -}}
+
+{{- $supportSet := dict "shadowsocks" true "vmess" true "vless" true "trojan" true "hysteria2" true "hysteria" true "tuic" true "anytls" true -}}
+{{- $supportedProxies := list -}}
+{{- range $proxy := $sorted -}}
+  {{- if hasKey $supportSet $proxy.Type -}}
     {{- $supportedProxies = append $supportedProxies $proxy -}}
-    {{- $_ := set $usedNames $proxy.Name true -}}
   {{- end -}}
 {{- end -}}
 
-{{- define "AllNodeNames" -}}
-{{- $supportedProxies := list -}}
-{{- $usedNames := dict -}}
-{{- range .Proxies -}}
-  {{- $isSupported := false -}}
-  {{- if or (eq .Type "shadowsocks") (eq .Type "vmess") (eq .Type "trojan") (eq .Type "hysteria2") (eq .Type "hy2") (eq .Type "tuic") (eq .Type "anytls") -}}
-    {{- $isSupported = true -}}
-  {{- else if eq .Type "vless" -}}
-    {{- if or (eq .Transport "ws") (eq .Transport "websocket") (eq .Transport "grpc") (eq .Transport "tcp") (not .Transport) -}}
-      {{- $isSupported = true -}}
-    {{- end -}}
-  {{- end -}}
-  {{- if and $isSupported (not (hasKey $usedNames .Name)) -}}
-    {{- $supportedProxies = append $supportedProxies . -}}
-    {{- $_ := set $usedNames .Name true -}}
-  {{- end -}}
-{{- end -}}
-{{- $first := true -}}
-{{- range $supportedProxies -}}
-  {{- if $first -}}
-    "{{ .Name }}"
-    {{- $first = false -}}
+{{- $proxyNames := "" -}}
+{{- range $proxy := $supportedProxies -}}
+  {{- if eq $proxyNames "" -}}
+    {{- $proxyNames = printf "%q" $proxy.Name -}}
   {{- else -}}
-    , "{{ .Name }}"
+    {{- $proxyNames = printf "%s, %q" $proxyNames $proxy.Name -}}
   {{- end -}}
 {{- end -}}
-{{- end -}}
+
 
 {{- define "NodeOutbound" -}}
 {{- $proxy := .proxy -}}
@@ -211,7 +205,6 @@
 {{- end -}}
 {{- end -}}
 
-// 用户信息: 已用流量 {{ $used }}GB / 总流量 {{ $total }}GB, 过期时间: {{ $exp }}
 {
   "log": {
     "level": "info",
@@ -297,79 +290,47 @@
     {
       "tag": "节点选择",
       "type": "selector",
-      "outbounds": [{{ template "AllNodeNames" . }}, "直连"]
+      "outbounds": [{{ $proxyNames }}, "直连"]
     },
     {
       "tag": "Github",
       "type": "selector",
-      "outbounds": [
-        "节点选择",
-        "直连",
-        {{ template "AllNodeNames" . }}
-      ]
+      "outbounds": ["节点选择","直连", {{ $proxyNames }}]
     },
     {
       "tag": "Google",
       "type": "selector",
-      "outbounds": [
-        "节点选择",
-        "直连",
-        {{ template "AllNodeNames" . }}
-      ]
+      "outbounds": ["节点选择","直连", {{ $proxyNames }}]
     },
     {
       "tag": "Microsoft",
       "type": "selector",
-      "outbounds": [
-        "节点选择",
-        "直连",
-        {{ template "AllNodeNames" . }}
-      ]
+      "outbounds": ["节点选择","直连", {{ $proxyNames }}]
     },
     {
       "tag": "OpenAI",
       "type": "selector",
-      "outbounds": [
-        "节点选择",
-        "直连",
-        {{ template "AllNodeNames" . }}
-      ]
+      "outbounds": ["节点选择","直连", {{ $proxyNames }}]
     },
     {
       "tag": "Telegram",
       "type": "selector",
-      "outbounds": [
-        "节点选择",
-        "直连",
-        {{ template "AllNodeNames" . }}
-      ]
+      "outbounds": ["节点选择","直连", {{ $proxyNames }}]
     },
     {
       "tag": "Twitter",
       "type": "selector",
-      "outbounds": [
-        "节点选择",
-        "直连",
-        {{ template "AllNodeNames" . }}
-      ]
+      "outbounds": ["节点选择","直连", {{ $proxyNames }}]
     },
     {
       "tag": "Youtube",
       "type": "selector",
-      "outbounds": [
-        "节点选择",
-        "直连",
-        {{ template "AllNodeNames" . }}
-      ]
+      "outbounds": ["节点选择","直连", {{ $proxyNames }}]
     },
     {
       "tag": "国内",
       "type": "selector",
-      "outbounds": [
-        "直连",
-        "节点选择",
-        {{ template "AllNodeNames" . }}
-      ]
+      "outbounds": ["直连","节点选择", {{ $proxyNames }}]
     },
     {{- $supportedProxies := list -}}
     {{- $usedNames := dict -}}
