@@ -39,105 +39,120 @@
    * **用量统计（GiB）**：
 
     ```gotemplate
-     {{- $GiB := 1073741824.0 -}}
-     {{- $used := printf "%.2f" (div (float64 (add .Download .Upload)) $GiB) -}}
-     {{- $total := printf "%.2f" (div (float64 .Traffic) $GiB) -}}
-     ```
+    {{- $GiB := 1073741824.0 -}}
+    {{- $used := printf "%.2f" (divf (add (.UserInfo.Download | default 0 | float64) (.UserInfo.Upload | default 0 | float64)) $GiB) -}}
+    {{- $traffic := (.UserInfo.Traffic | default 0 | float64) -}}
+    {{- $total := printf "%.2f" (divf $traffic $GiB) -}}
+    ```
 
    * **ExpiredAt 解析（10/13 位或日期字符串）**：
 
-     ```gotemplate
-     {{- $ExpiredAt := "" -}}
-     {{- $expStr := printf "%v" .UserInfo.ExpiredAt -}}
-     {{- if regexMatch `^[0-9]+$` $expStr -}}
-       {{- $ts := $expStr | float64 -}}
-       {{- $sec := ternary (divf $ts 1000.0) $ts (ge (len $expStr) 13) -}}
-       {{- $ExpiredAt = (date "2006-01-02 15:04:05" (unixEpoch ($sec | int64))) -}}
-     {{- else -}}
-       {{- $ExpiredAt = $expStr -}}
-     {{- end -}}
-     ```
+    ```gotemplate
+    {{- $ExpiredAt := "" -}}
+    {{- $expStr := printf "%v" .UserInfo.ExpiredAt -}}
+    {{- if regexMatch `^[0-9]+$` $expStr -}}
+      {{- $ts := $expStr | float64 -}}
+      {{- $sec := ternary (divf $ts 1000.0) $ts (ge (len $expStr) 13) -}}
+      {{- $ExpiredAt = (date "2006-01-02 15:04:05" (unixEpoch ($sec | int64))) -}}
+    {{- else -}}
+      {{- $ExpiredAt = $expStr -}}
+    {{- end -}}
+    ```
 
    * **排序**（使用 dict 配置，完全动态排序）：
 
-     ```gotemplate
-     {{- /* 排序配置 dict，用户可自定义字段和顺序 */ -}}
-     {{- $sortConfig := dict "Sort" "asc" "Name" "asc" -}}
-     {{- /* 其他可选字段示例：
+    ```gotemplate
+      {{- /* 排序配置 dict，用户可自定义字段和顺序 */ -}}
+      {{- $sortConfig := dict "Sort" "asc" "Name" "asc" -}}
+      {{- /* 其他可选字段示例：
           $sortConfig := dict "Country" "asc" "Type" "asc" "Sort" "asc" "Name" "asc"
           $sortConfig := dict "Server" "asc" "Port" "asc" "Name" "desc"
           可使用任意代理对象中存在的字段名
-     */ -}}
-     {{- $byKey := dict -}}
-     {{- range $p := .Proxies -}}
-       {{- $keyParts := list -}}
-       {{- range $field, $order := $sortConfig -}}
-         {{- $val := default "" (printf "%v" (index $p $field)) -}}
-         {{- /* 数字字段补零对齐，便于字符串排序 */ -}}
-         {{- if or (eq $field "Sort") (eq $field "Port") -}}
-           {{- $val = printf "%08d" (int (default 0 (index $p $field))) -}}
-         {{- end -}}
-         {{- /* 降序处理：添加前缀使其在字符串排序时反转 */ -}}
-         {{- if eq $order "desc" -}}
-           {{- $val = printf "~%s" $val -}}
-         {{- end -}}
-         {{- $keyParts = append $keyParts $val -}}
-       {{- end -}}
-       {{- $sortKey := join "|" $keyParts -}}
-       {{- $_ := set $byKey $sortKey $p -}}
-     {{- end -}}
-     {{- $sorted := list -}}
-     {{- range $k := sortAlpha (keys $byKey) -}}
-       {{- $sorted = append $sorted (index $byKey $k) -}}
-     {{- end -}}
-     ```
+      */ -}}
+      {{- $byKey := dict -}}
+      {{- range $proxy := .Proxies -}}
+        {{- $keyParts := list -}}
+        {{- range $field, $order := $sortConfig -}}
+          {{- $val := default "" (printf "%v" (index $proxy $field)) -}}
+          {{- /* 数字字段补零对齐，便于字符串排序 */ -}}
+          {{- if or (eq $field "Sort") (eq $field "Port") -}}
+            {{- $val = printf "%08d" (int (default 0 (index $proxy $field))) -}}
+          {{- end -}}
+          {{- /* 降序处理：添加前缀使其在字符串排序时反转 */ -}}
+          {{- if eq $order "desc" -}}
+            {{- $val = printf "~%s" $val -}}
+          {{- end -}}
+          {{- $keyParts = append $keyParts $val -}}
+        {{- end -}}
+        {{- $sortKey := join "|" $keyParts -}}
+        {{- $_ := set $byKey $sortKey $proxy -}}
+      {{- end -}}
+      {{- $sorted := list -}}
+      {{- range $k := sortAlpha (keys $byKey) -}}
+        {{- $sorted = append $sorted (index $byKey $k) -}}
+      {{- end -}}
+    ```
 
    * **协议过滤**（以 *动态读取* 的 `protocols` 为上限，再按“目标平台”裁剪）：
 
     ```gotemplate
-     {{- /* 这里的 $supportSet 由你在生成时用 constants.ts 动态生成为 dict，比如 {"vmess":true,...} */ -}}
-     {{- $supportedProxies := list -}}
-     {{- range $p := $sorted -}}
-       {{- if hasKey $supportSet $p.Type -}}
-         {{- $supportedProxies = append $supportedProxies $p -}}
-       {{- else -}}
-         {{- /* 跳过不支持的协议类型 */ -}}
-       {{- end -}}
-     {{- end -}}
-     {{- $proxyNames := list -}}
-     {{- range $p := $supportedProxies -}}
-       {{- $proxyNames = append $proxyNames $p.Name -}}
-     {{- end -}}
-     {{- $proxyNamesStr := join (uniq $proxyNames) ", " -}}
+    {{- /* 这里的 $supportSet 由你在生成时用 constants.ts 动态生成为 dict，比如 {"vmess":true,...} */ -}}
+    {{- $supportedProxies := list -}}
+    {{- range $proxy := $sorted -}}
+      {{- if hasKey $supportSet $proxy.Type -}}
+        {{- $supportedProxies = append $supportedProxies $proxy -}}
+      {{- else -}}
+        {{- /* 跳过不支持的协议类型 */ -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $proxyNames := list -}}
+    {{- range $proxy := $supportedProxies -}}
+      {{- $proxyNames = append $proxyNames $proxy.Name -}}
+    {{- end -}}
+    {{- $proxyNamesStr := join (uniq $proxyNames) ", " -}}
     ```
 
-   * **IPv6 包装 / SNI 选择（每个代理范围内使用）**：
+   * **公共**
 
-     ```gotemplate
-     {{- /* inside: range $p := $supportedProxies */ -}}
-     {{- $host := default $p.Server $p.Host -}}
+    ```gotemplate
+    {{- /* inside: range $proxy := $supportedProxies */ -}}
+    {{- $common := "udp=1&tfo=1" -}}
+    ```
 
-     {{- /* IPv6 地址包装检测 */ -}}
-     {{- $needsWrap := and (contains $host ":") (not (hasPrefix "[" $host)) -}}
-     {{- $HostWrapped := ternary (printf "[%s]" $host) $host $needsWrap -}}
+   * **IPv6**
 
-     {{- /* SNI 字段处理 */ -}}
-     {{- $sni := default $p.Sni $p.SNI -}}
-     {{- $isIPv4 := regexMatch `^(\d{1,3}\.){3}\d{1,3}$` $host -}}
-     {{- $isIPv6 := regexMatch `^[0-9A-Fa-f:]+$` $host -}}
-     {{- $isDomain := and (not $isIPv4) (not $isIPv6) (regexMatch `^[A-Za-z0-9.-]+$` $host) -}}
-     {{- $SNI := "" -}}
-     {{- if $sni -}}
-       {{- $SNI = $sni -}}
-     {{- else if $isDomain -}}
-       {{- $SNI = $host -}}
-     {{- end -}}
+    ```gotemplate
+    {{- /* inside: range $proxy := $supportedProxies */ -}}
+    {{- $server := $proxy.Server -}}
+    {{- if and (contains $server ":") (not (hasPrefix "[" $server)) -}}
+      {{- $server = printf "[%s]" $server -}}
+    {{- end -}}
+    ```
 
-     {{- /* 证书校验跳过设置 */ -}}
-     {{- $SkipVerify := or $p.allow_insecure $p.AllowInsecure -}}
-     ```
+   * **密码**
 
-   * **统一引用**：主机字段一律用 `$HostWrapped`；TLS SNI 用 `$SNI`（仅非空时输出）；“跳过证书校验”仅在 `$SkipVerify` 为真时输出到平台对应字段。
+    ```gotemplate
+    {{- /* inside: range $proxy := $supportedProxies */ -}}
+    {{- $password := $.UserInfo.Password -}}
+    {{- if and (eq $proxy.Type "shadowsocks") (ne (default "" $proxy.ServerKey) "") -}}
+      {{- $method := $proxy.Method -}}
+      {{- if or (hasPrefix "2022-blake3-" $method) (eq $method "2022-blake3-aes-128-gcm") (eq $method "2022-blake3-aes-256-gcm") -}}
+        {{- $userKeyLen := ternary 16 32 (hasSuffix "128-gcm" $method) -}}
+        {{- $pwdStr := printf "%s" $password -}}
+        {{- $userKey := ternary $pwdStr (trunc $userKeyLen $pwdStr) (le (len $pwdStr) $userKeyLen) -}}
+        {{- $serverB64 := b64enc $proxy.ServerKey -}}
+        {{- $userB64 := b64enc $userKey -}}
+        {{- $password = printf "%s:%s" $serverB64 $userB64 -}}
+      {{- end -}}
+    {{- end -}}
+    ```
+
+   * **跳过验证**
+
+    ```gotemplate
+    {{- /* inside: range $proxy := $supportedProxies */ -}}
+    {{- $SkipVerify := $proxy.AllowInsecure -}}
+    ```
 
 5. **字段输出规则（动态合规）**
 

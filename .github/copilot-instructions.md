@@ -38,11 +38,12 @@
 
 	 * Usage stats (GiB):
 
-		```gotemplate
-		 {{- $GiB := 1073741824.0 -}}
-		 {{- $used := printf "%.2f" (div (float64 (add .Download .Upload)) $GiB) -}}
-		 {{- $total := printf "%.2f" (div (float64 .Traffic) $GiB) -}}
-		 ```
+    ```gotemplate
+    {{- $GiB := 1073741824.0 -}}
+    {{- $used := printf "%.2f" (divf (add (.UserInfo.Download | default 0 | float64) (.UserInfo.Upload | default 0 | float64)) $GiB) -}}
+    {{- $traffic := (.UserInfo.Traffic | default 0 | float64) -}}
+    {{- $total := printf "%.2f" (divf $traffic $GiB) -}}
+    ```
 
 	 * ExpiredAt parsing (10/13 digits or date string):
 
@@ -69,10 +70,10 @@
 					You can use any field that exists on a proxy object
 		 */ -}}
 		 {{- $byKey := dict -}}
-		 {{- range $p := .Proxies -}}
+		 {{- range $proxy := .Proxies -}}
 			 {{- $keyParts := list -}}
 			 {{- range $field, $order := $sortConfig -}}
-				 {{- $val := default "" (printf "%v" (index $p $field)) -}}
+				 {{- $val := default "" (printf "%v" (index $proxy $field)) -}}
 				 {{- /* Pad numeric fields for proper lexicographic sort */ -}}
 				 {{- if or (eq $field "Sort") (eq $field "Port") -}}
 					 {{- $val = printf "%08d" (int (default 0 (index $p $field))) -}}
@@ -84,7 +85,7 @@
 				 {{- $keyParts = append $keyParts $val -}}
 			 {{- end -}}
 			 {{- $sortKey := join "|" $keyParts -}}
-			 {{- $_ := set $byKey $sortKey $p -}}
+			 {{- $_ := set $byKey $sortKey $proxy -}}
 		 {{- end -}}
 		 {{- $sorted := list -}}
 		 {{- range $k := sortAlpha (keys $byKey) -}}
@@ -105,39 +106,53 @@
 			 {{- end -}}
 		 {{- end -}}
 		 {{- $proxyNames := list -}}
-		 {{- range $p := $supportedProxies -}}
-			 {{- $proxyNames = append $proxyNames $p.Name -}}
+		 {{- range $proxy := $supportedProxies -}}
+			 {{- $proxyNames = append $proxyNames $proxy.Name -}}
 		 {{- end -}}
 		 {{- $proxyNamesStr := join (uniq $proxyNames) ", " -}}
 		```
 
-	 * IPv6 wrapping / SNI selection (use within each proxy):
+	 * Common
 
-		 ```gotemplate
-		 {{- /* inside: range $p := $supportedProxies */ -}}
-		 {{- $host := default $p.Server $p.Host -}}
+	 ```gotemplate
+	 {{- /* inside: range $p := $supportedProxies */ -}}
+	 {{- $common := "udp=1&tfo=1" -}}
+	 ```
 
-		 {{- /* IPv6 address wrapping check */ -}}
-		 {{- $needsWrap := and (contains $host ":") (not (hasPrefix "[" $host)) -}}
-		 {{- $HostWrapped := ternary (printf "[%s]" $host) $host $needsWrap -}}
+	 * IPv6
 
-		 {{- /* SNI field handling */ -}}
-		 {{- $sni := default $p.Sni $p.SNI -}}
-		 {{- $isIPv4 := regexMatch `^(\d{1,3}\.){3}\d{1,3}$` $host -}}
-		 {{- $isIPv6 := regexMatch `^[0-9A-Fa-f:]+$` $host -}}
-		 {{- $isDomain := and (not $isIPv4) (not $isIPv6) (regexMatch `^[A-Za-z0-9.-]+$` $host) -}}
-		 {{- $SNI := "" -}}
-		 {{- if $sni -}}
-			 {{- $SNI = $sni -}}
-		 {{- else if $isDomain -}}
-			 {{- $SNI = $host -}}
-		 {{- end -}}
+	 ```gotemplate
+	 {{- /* inside: range $p := $supportedProxies */ -}}
+	 {{- $server := $p.Server -}}
+	 {{- if and (contains $server ":") (not (hasPrefix "[" $server)) -}}
+	   {{- $server = printf "[%s]" $server -}}
+	 {{- end -}}
+	 ```
 
-		 {{- /* Certificate verification skip */ -}}
-		 {{- $SkipVerify := or $p.allow_insecure $p.AllowInsecure -}}
-		 ```
+	 * Password
 
-	 * Unified references: always use `$HostWrapped` for the host field; use `$SNI` for TLS SNI (output only if non-empty); only output the platform’s corresponding field for “skip certificate verification” when `$SkipVerify` is true.
+	 ```gotemplate
+	 {{- /* inside: range $p := $supportedProxies */ -}}
+	 {{- $password := $.UserInfo.Password -}}
+	 {{- if and (eq $proxy.Type "shadowsocks") (ne (default "" $proxy.ServerKey) "") -}}
+	   {{- $method := $proxy.Method -}}
+	   {{- if or (hasPrefix "2022-blake3-" $method) (eq $method "2022-blake3-aes-128-gcm") (eq $method "2022-blake3-aes-256-gcm") -}}
+	     {{- $userKeyLen := ternary 16 32 (hasSuffix "128-gcm" $method) -}}
+	     {{- $pwdStr := printf "%s" $password -}}
+	     {{- $userKey := ternary $pwdStr (trunc $userKeyLen $pwdStr) (le (len $pwdStr) $userKeyLen) -}}
+	     {{- $serverB64 := b64enc $proxy.ServerKey -}}
+	     {{- $userB64 := b64enc $userKey -}}
+	     {{- $password = printf "%s:%s" $serverB64 $userB64 -}}
+	   {{- end -}}
+	 {{- end -}}
+	 ```
+
+	 * Skip verify
+
+	 ```gotemplate
+	 {{- /* inside: range $p := $supportedProxies */ -}}
+	 {{- $SkipVerify := $proxy.AllowInsecure -}}
+	 ```
 
 5. Field output rules (dynamic compliance)
 
