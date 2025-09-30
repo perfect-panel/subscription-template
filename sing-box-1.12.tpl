@@ -129,7 +129,7 @@
 {{- else if eq $proxy.Type "vmess" -}}
 { "type": "vmess", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "uuid": "{{ $pwd }}", "security": "auto"{{ if $transportOpts }}, {{ $transportOpts }}{{ end }}{{ if $tlsOpts }}, {{ $tlsOpts }}{{ end }} }
 
-{{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") -}}
+{{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hysteria") -}}
 {{- $obfsOpts := "" -}}
 {{- if $proxy.ObfsPassword -}}
   {{- $obfsOpts = printf "\"obfs\": { \"type\": \"salamander\", \"password\": \"%s\" }" ($proxy.ObfsPassword) -}}
@@ -332,22 +332,6 @@
       "type": "selector",
       "outbounds": ["直连","节点选择", {{ $proxyNames }}]
     },
-    {{- $supportedProxies := list -}}
-    {{- $usedNames := dict -}}
-    {{- range $proxy := .Proxies -}}
-      {{- $isSupported := false -}}
-      {{- if or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") (eq $proxy.Type "tuic") (eq $proxy.Type "anytls") -}}
-        {{- $isSupported = true -}}
-      {{- else if eq $proxy.Type "vless" -}}
-        {{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") (eq $proxy.Transport "grpc") (eq $proxy.Transport "tcp") (not $proxy.Transport) -}}
-          {{- $isSupported = true -}}
-        {{- end -}}
-      {{- end -}}
-      {{- if and $isSupported (not (hasKey $usedNames $proxy.Name)) -}}
-        {{- $supportedProxies = append $supportedProxies $proxy -}}
-        {{- $_ := set $usedNames $proxy.Name true -}}
-      {{- end -}}
-    {{- end -}}
     {{- range $i, $proxy := $supportedProxies }}
     {{ if $i }},{{ end }}
     {{ template "NodeOutbound" (dict "proxy" $proxy "UserInfo" $.UserInfo) }}

@@ -34,7 +34,7 @@
   {{- $sorted = append $sorted (index $byKey $k) -}}
 {{- end -}}
 
-{{- $supportSet := dict "shadowsocks" true "vmess" true "trojan" true "hysteria2" true "hysteria" true "tuic" true -}}
+{{- $supportSet := dict "shadowsocks" true "vmess" true "vless" true "trojan" true "hysteria2" true "hysteria" true "tuic" true "wireguard" true -}}
 {{- $supportedProxies := list -}}
 {{- range $proxy := $sorted -}}
   {{- if hasKey $supportSet $proxy.Type -}}

@@ -34,7 +34,7 @@
   {{- $sorted = append $sorted (index $byKey $k) -}}
 {{- end -}}
 
-{{- $supportSet := dict "shadowsocks" true "vmess" true "trojan" true "hysteria2" true "hysteria" true "tuic" true -}}
+{{- $supportSet := dict "shadowsocks" true "vmess" true "vless" true "trojan" true "hysteria2" true "hysteria" true "tuic" true "wireguard" true -}}
 {{- $supportedProxies := list -}}
 {{- range $proxy := $sorted -}}
   {{- if hasKey $supportSet $proxy.Type -}}
@@ -99,7 +99,7 @@ hijack-dns = 8.8.8.8:53, 1.1.1.1:53
 {{ $proxy.Name }} = VLESS,{{ $server }},{{ $proxy.Port }},{{ $password }}{{- if $proxy.Flow }},flow={{ $proxy.Flow }}{{ end }}{{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") }},transport=ws{{- if $proxy.Path }},path={{ $proxy.Path }}{{ end }}{{- if $proxy.Host }},host={{ $proxy.Host }}{{ end }}{{- else if eq $proxy.Transport "grpc" }},transport=grpc,servicename={{ $proxy.ServiceName | default "grpc" }}{{ end }}{{- if $proxy.SNI }},tls-name={{ $proxy.SNI }}{{ end }}{{- if $proxy.AllowInsecure }},skip-cert-verify={{ $proxy.AllowInsecure }}{{ end }}{{- if $proxy.RealityPublicKey }},reality-public-key={{ $proxy.RealityPublicKey }}{{- if $proxy.RealityShortId }},reality-short-id={{ $proxy.RealityShortId }}{{ end }}{{ end }},{{ $common }}
 {{- else if eq $proxy.Type "trojan" }}
 {{ $proxy.Name }} = trojan,{{ $server }},{{ $proxy.Port }},{{ $password }}{{- if or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") }},transport=ws{{- if $proxy.Path }},path={{ $proxy.Path }}{{ end }}{{- if $proxy.Host }},host={{ $proxy.Host }}{{ end }}{{- else if eq $proxy.Transport "grpc" }},transport=grpc,servicename={{ $proxy.ServiceName | default "grpc" }}{{ end }}{{- if $proxy.SNI }},tls-name={{ $proxy.SNI }}{{ end }}{{- if $proxy.AllowInsecure }},skip-cert-verify={{ $proxy.AllowInsecure }}{{ end }}{{- if $proxy.Fingerprint }},tls-fingerprint={{ $proxy.Fingerprint }}{{ end }},{{ $common }}
-{{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") }}
+{{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hysteria") }}
 {{ $proxy.Name }} = Hysteria2,{{ $proxy.Server }},{{ $proxy.Port }},{{ $.UserInfo.Password }}{{- if $proxy.SNI }},sni={{ $proxy.SNI }}{{ end }}{{- if $proxy.AllowInsecure }},skip-cert-verify={{ $proxy.AllowInsecure }}{{ end }}{{- if $proxy.ObfsPassword }},obfs=salamander,obfs-password={{ $proxy.ObfsPassword }}{{ end }}{{- if $proxy.HopPorts }},port-hopping={{ $proxy.HopPorts }}{{ end }}{{- if $proxy.HopInterval }},hop-interval={{ $proxy.HopInterval }}{{ end }}
 {{- else if eq $proxy.Type "tuic" }}
 {{ $proxy.Name }} = TUIC,{{ $proxy.Server }},{{ $proxy.Port }},{{ $proxy.ServerKey }},{{ $.UserInfo.Password }}{{- if $proxy.SNI }},sni={{ $proxy.SNI }}{{ end }}{{- if $proxy.AllowInsecure }},skip-cert-verify={{ $proxy.AllowInsecure }}{{ end }}{{- if $proxy.DisableSNI }},disable-sni={{ $proxy.DisableSNI }}{{ end }}{{- if $proxy.ReduceRtt }},reduce-rtt={{ $proxy.ReduceRtt }}{{ end }}{{- if $proxy.UDPRelayMode }},udp-relay-mode={{ $proxy.UDPRelayMode }}{{ end }}{{- if $proxy.CongestionController }},congestion-control={{ $proxy.CongestionController }}{{ end }}

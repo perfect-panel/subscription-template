@@ -34,12 +34,12 @@
   {{- $sorted = append $sorted (index $byKey $k) -}}
 {{- end -}}
 
-{{/* {{- $supportSet := dict "shadowsocks" true "vmess" true "vless" true "trojan" true "hysteria2" true "hysteria" true "tuic" true "anytls" true -}} */}}
+{{- $supportSet := dict "shadowsocks" true "vmess" true "vless" true "trojan" true "hysteria2" true "hysteria" true "tuic" true "anytls" true -}}
 {{- $supportedProxies := list -}}
 {{- range $proxy := $sorted -}}
-  {{/* {{- if hasKey $supportSet $proxy.Type -}} */}}
+  {{- if hasKey $supportSet $proxy.Type -}}
     {{- $supportedProxies = append $supportedProxies $proxy -}}
-  {{/* {{- end -}} */}}
+  {{- end -}}
 {{- end -}}
 
 REMARKS={{ .SiteName }}-{{ .SubscribeName }}
