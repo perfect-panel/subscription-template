@@ -167,23 +167,23 @@
       {"rule_set": "geosite-geolocation-!cn", "outbound": "Others"}
     ],
     "rule_set": [
-      {"tag": "geoip-cn","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/cn.srs","download_detour": "direct"},
-      {"tag": "geosite-cn","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/cn.srs","download_detour": "direct"},
-      {"tag": "geosite-private","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/private.srs","download_detour": "direct"},
-      {"tag": "geosite-geolocation-!cn","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/geolocation-!cn.srs","download_detour": "direct"},
-      {"tag": "geosite-category-ads-all","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/category-ads-all.srs","download_detour": "direct"},
-      {"tag": "geoip-netflix","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/netflix.srs","download_detour": "direct"},
-      {"tag": "geosite-netflix","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/netflix.srs","download_detour": "direct"},
-      {"tag": "geosite-disney","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/disney.srs","download_detour": "direct"},
-      {"tag": "geosite-youtube","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/youtube.srs","download_detour": "direct"},
-      {"tag": "geosite-spotify","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/spotify.srs","download_detour": "direct"},
-      {"tag": "geoip-apple","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo-lite/geoip/apple.srs","download_detour": "direct"},
-      {"tag": "geosite-apple","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/apple.srs","download_detour": "direct"},
-      {"tag": "geoip-telegram","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/telegram.srs","download_detour": "direct"},
-      {"tag": "geosite-telegram","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/telegram.srs","download_detour": "direct"},
-      {"tag": "geosite-openai","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/openai.srs","download_detour": "direct"},
-      {"tag": "geosite-microsoft","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/microsoft.srs","download_detour": "direct"},
-      {"tag": "geosite-tiktok","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/tiktok.srs","download_detour": "direct"}
+      {"tag": "geoip-cn","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geoip/cn.srs","download_detour": "direct"},
+      {"tag": "geosite-cn","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/cn.srs","download_detour": "direct"},
+      {"tag": "geosite-private","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/private.srs","download_detour": "direct"},
+      {"tag": "geosite-geolocation-!cn","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/geolocation-!cn.srs","download_detour": "direct"},
+      {"tag": "geosite-category-ads-all","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/category-ads-all.srs","download_detour": "direct"},
+      {"tag": "geoip-netflix","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geoip/netflix.srs","download_detour": "direct"},
+      {"tag": "geosite-netflix","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/netflix.srs","download_detour": "direct"},
+      {"tag": "geosite-disney","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/disney.srs","download_detour": "direct"},
+      {"tag": "geosite-youtube","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/youtube.srs","download_detour": "direct"},
+      {"tag": "geosite-spotify","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/spotify.srs","download_detour": "direct"},
+      {"tag": "geoip-apple","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo-lite/geoip/apple.srs","download_detour": "direct"},
+      {"tag": "geosite-apple","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/apple.srs","download_detour": "direct"},
+      {"tag": "geoip-telegram","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geoip/telegram.srs","download_detour": "direct"},
+      {"tag": "geosite-telegram","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/telegram.srs","download_detour": "direct"},
+      {"tag": "geosite-openai","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/openai.srs","download_detour": "direct"},
+      {"tag": "geosite-microsoft","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/microsoft.srs","download_detour": "direct"},
+      {"tag": "geosite-tiktok","type": "remote","format": "binary","url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/tiktok.srs","download_detour": "direct"}
     ]
   }
 }

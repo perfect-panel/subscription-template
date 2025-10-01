@@ -133,29 +133,29 @@ hijack-dns = 8.8.8.8:53, 1.1.1.1:53
 ^https?:\/\/(www.)?google\.cn 302 https://www.google.com
 
 [Remote Rule]
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Apple/Apple.list, policy = 🍎 Apple, tag = Apple, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Google/Google.list, policy = 🔍 Google, tag = Google, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/GitHub/GitHub.list, policy = 🪟 Microsoft, tag = GitHub, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Microsoft/Microsoft.list, policy = 🪟 Microsoft, tag = Microsoft, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/HBO/HBO.list, policy = 📺 GlobalMedia, tag = HBO, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Disney/Disney.list, policy = 📺 GlobalMedia, tag = Disney, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/TikTok/TikTok.list, policy = 📺 GlobalMedia, tag = TikTok, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Netflix/Netflix.list, policy = 📺 GlobalMedia, tag = Netflix, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/GlobalMedia/GlobalMedia.list, policy = 📺 GlobalMedia, tag = GlobalMedia, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/GlobalMedia/GlobalMedia_Domain.list, policy = 📺 GlobalMedia, tag = GlobalMedia, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Telegram/Telegram.list, policy = 📟 Telegram, tag = Telegram, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/OpenAI/OpenAI.list, policy = 🤖 AI, tag = OpenAI, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Gemini/Gemini.list, policy = 🤖 AI, tag = Gemini, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Copilot/Copilot.list, policy = 🤖 AI, tag = Copilot, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Claude/Claude.list, policy = 🤖 AI, tag = Claude, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Crypto/Crypto.list, policy = 🪙 Crypto, tag = Crypto, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Cryptocurrency/Cryptocurrency.list, policy = 🪙 Crypto, tag = Cryptocurrency, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Game/Game.list, policy = 🎮 Game, tag = Game, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Global/Global.list, policy = 🚀 Proxy, tag = Global, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Global/Global_Domain.list, policy = 🚀 Proxy, tag = Global, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/ChinaMax/ChinaMax.list, policy = 🇨🇳 China, tag = ChinaMax, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/ChinaMax/ChinaMax_Domain.list, policy = 🇨🇳 China, tag = ChinaMax, enabled = true
-https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Loon/Lan/Lan.list, policy = 🎯 Direct, tag = Lan, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Apple/Apple.list, policy = 🍎 Apple, tag = Apple, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Google/Google.list, policy = 🔍 Google, tag = Google, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/GitHub/GitHub.list, policy = 🪟 Microsoft, tag = GitHub, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Microsoft/Microsoft.list, policy = 🪟 Microsoft, tag = Microsoft, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/HBO/HBO.list, policy = 📺 GlobalMedia, tag = HBO, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Disney/Disney.list, policy = 📺 GlobalMedia, tag = Disney, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/TikTok/TikTok.list, policy = 📺 GlobalMedia, tag = TikTok, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Netflix/Netflix.list, policy = 📺 GlobalMedia, tag = Netflix, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/GlobalMedia/GlobalMedia.list, policy = 📺 GlobalMedia, tag = GlobalMedia, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/GlobalMedia/GlobalMedia_Domain.list, policy = 📺 GlobalMedia, tag = GlobalMedia, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Telegram/Telegram.list, policy = 📟 Telegram, tag = Telegram, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/OpenAI/OpenAI.list, policy = 🤖 AI, tag = OpenAI, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Gemini/Gemini.list, policy = 🤖 AI, tag = Gemini, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Copilot/Copilot.list, policy = 🤖 AI, tag = Copilot, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Claude/Claude.list, policy = 🤖 AI, tag = Claude, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Crypto/Crypto.list, policy = 🪙 Crypto, tag = Crypto, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Cryptocurrency/Cryptocurrency.list, policy = 🪙 Crypto, tag = Cryptocurrency, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Game/Game.list, policy = 🎮 Game, tag = Game, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Global/Global.list, policy = 🚀 Proxy, tag = Global, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Global/Global_Domain.list, policy = 🚀 Proxy, tag = Global, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/ChinaMax/ChinaMax.list, policy = 🇨🇳 China, tag = ChinaMax, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/ChinaMax/ChinaMax_Domain.list, policy = 🇨🇳 China, tag = ChinaMax, enabled = true
+https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Loon/Lan/Lan.list, policy = 🎯 Direct, tag = Lan, enabled = true
 
 [Rule]
 GEOIP, CN, 🇨🇳 China

@@ -152,121 +152,121 @@ rule-providers:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Apple/Apple_Classical_No_Resolve.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Apple/Apple_Classical_No_Resolve.yaml
     interval: 86400
   Google:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Google/Google_No_Resolve.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Google/Google_No_Resolve.yaml
     interval: 86400
   Microsoft:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Microsoft/Microsoft.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Microsoft/Microsoft.yaml
     interval: 86400
   Github:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/GitHub/GitHub.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/GitHub/GitHub.yaml
     interval: 86400
   HBO:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/HBO/HBO.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/HBO/HBO.yaml
     interval: 86400
   Disney:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Disney/Disney.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Disney/Disney.yaml
     interval: 86400
   TikTok:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/TikTok/TikTok.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/TikTok/TikTok.yaml
     interval: 86400
   Netflix:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Netflix/Netflix.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Netflix/Netflix.yaml
     interval: 86400
   GlobalMedia:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/GlobalMedia/GlobalMedia_Classical_No_Resolve.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/GlobalMedia/GlobalMedia_Classical_No_Resolve.yaml
     interval: 86400
   Telegram:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Telegram/Telegram_No_Resolve.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Telegram/Telegram_No_Resolve.yaml
     interval: 86400
   OpenAI:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OpenAI/OpenAI.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/OpenAI/OpenAI.yaml
     interval: 86400
   Gemini:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Gemini/Gemini.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Gemini/Gemini.yaml
     interval: 86400
   Copilot:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Copilot/Copilot.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Copilot/Copilot.yaml
     interval: 86400
   Claude:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Claude/Claude.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Claude/Claude.yaml
     interval: 86400
   Crypto:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Crypto/Crypto.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Crypto/Crypto.yaml
     interval: 86400
   Cryptocurrency:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Cryptocurrency/Cryptocurrency.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Cryptocurrency/Cryptocurrency.yaml
     interval: 86400
   Game:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Game/Game.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Game/Game.yaml
     interval: 86400
   Global:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Global/Global_Classical_No_Resolve.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Global/Global_Classical_No_Resolve.yaml
     interval: 86400
   ChinaMax:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/ChinaMax/ChinaMax_Classical_No_Resolve.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/ChinaMax/ChinaMax_Classical_No_Resolve.yaml
     interval: 86400
   Lan:
     type: http
     behavior: classical
     format: yaml
-    url: https://cdn.jsdmirror.com/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Lan/Lan.yaml
+    url: https://cdn.jsdmirror.com/gh/perfect-panel/rules/rule/Clash/Lan/Lan.yaml
     interval: 86400
 
 url-rewrite:

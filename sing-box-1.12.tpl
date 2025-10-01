@@ -429,84 +429,84 @@
         "tag": "geosite-github",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geosite/geosite-github.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/github.srs",
         "download_detour": "直连"
       },
       {
         "tag": "geoip-google",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geoip/geoip-google.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geoip/google.srs",
         "download_detour": "直连"
       },
       {
         "tag": "geosite-google",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geosite/geosite-google.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/google.srs",
         "download_detour": "直连"
       },
       {
         "tag": "geosite-microsoft",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geosite/geosite-microsoft.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/microsoft.srs",
         "download_detour": "直连"
       },
       {
         "tag": "geosite-openai",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geosite/geosite-openai.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/openai.srs",
         "download_detour": "直连"
       },
       {
         "tag": "geoip-telegram",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geoip/geoip-telegram.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geoip/telegram.srs",
         "download_detour": "直连"
       },
       {
         "tag": "geosite-telegram",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geosite/geosite-telegram.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/telegram.srs",
         "download_detour": "直连"
       },
       {
         "tag": "geoip-twitter",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geoip/geoip-twitter.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geoip/twitter.srs",
         "download_detour": "直连"
       },
       {
         "tag": "geosite-twitter",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geosite/geosite-twitter.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/twitter.srs",
         "download_detour": "直连"
       },
       {
         "tag": "geosite-youtube",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geosite/geosite-youtube.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/youtube.srs",
         "download_detour": "直连"
       },
       {
         "tag": "geosite-cn",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geosite/geosite-cn.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/cn.srs",
         "download_detour": "直连"
       },
       {
         "tag": "geoip-cn",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/lyc8503/sing-box-rules@rule-set-geoip/geoip-cn.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geoip/cn.srs",
         "download_detour": "直连"
       }
     ]
