@@ -46,7 +46,7 @@ REMARKS={{ .SiteName }}-{{ .SubscribeName }}
 STATUS=Traffic: {{ $used }} GiB/{{ $total }} GiB | Expires: {{ $ExpiredAt }}
 # Generated at: {{ now | date "2006-01-02 15:04:05" }}
 
-{{- range $proxy := $supportedProxies }}
+{{ range $proxy := $supportedProxies }}
   {{- $common := "udp=1&tfo=1" -}}
 
   {{- $server := $proxy.Server -}}
