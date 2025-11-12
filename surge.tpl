@@ -58,28 +58,41 @@
 #!MANAGED-CONFIG {{ .UserInfo.SubscribeURL }} interval=86400 strict=true
 
 [General]
+# 日志级别
 loglevel = notify
+
+# 外部控制器访问
 external-controller-access = perlnk@0.0.0.0:6170
+
+# 网络设置
 exclude-simple-hostnames = true
 show-error-page-for-reject = true
 udp-priority = true
 udp-policy-not-supported-behaviour = reject
 ipv6 = true
 ipv6-vif = auto
+
+# 连接测试
 proxy-test-url = http://www.gstatic.com/generate_204
 internet-test-url = http://www.gstatic.com/generate_204
 test-timeout = 5
+
+# DNS 设置
 dns-server = system, 119.29.29.29, 223.5.5.5
 encrypted-dns-server = https://dns.alidns.com/dns-query
 hijack-dns = 8.8.8.8:53, 8.8.4.4:53, 1.1.1.1:53, 1.0.0.1:53
+
+# 跳过代理
 skip-proxy = 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 127.0.0.0/8, localhost, *.local
+
+# 真实 IP
 always-real-ip = *.lan, lens.l.google.com, *.srv.nintendo.net, *.stun.playstation.net, *.xboxlive.com, xbox.*.*.microsoft.com, *.msftncsi.com, *.msftconnecttest.com
 
-# > Surge Mac Parameters
+# Surge Mac 参数
 http-listen = 0.0.0.0:6088
 socks5-listen = 0.0.0.0:6089
 
-# > Surge iOS Parameters
+# Surge iOS 参数（WiFi 共享）
 allow-wifi-access = true
 allow-hotspot-access = true
 wifi-access-http-port = 6088
@@ -134,6 +147,7 @@ SubscribeInfo = title={{ .SiteName }} - {{ .SubscribeName }}, content=已用流�
 {{- end }}
 
 [Proxy Group]
+# 主要策略组
 🚀 Proxy = select, 🌏 Auto, 🎯 Direct, include-other-group=🇺🇳 Nodes
 🍎 Apple = select, 🚀 Proxy, 🎯 Direct, include-other-group=🇺🇳 Nodes
 🔍 Google = select, 🚀 Proxy, 🎯 Direct, include-other-group=🇺🇳 Nodes
@@ -145,6 +159,8 @@ SubscribeInfo = title={{ .SiteName }} - {{ .SubscribeName }}, content=已用流�
 📟 Telegram = select, 🚀 Proxy, 🎯 Direct, include-other-group=🇺🇳 Nodes
 🇨🇳 China = select, 🎯 Direct, 🚀 Proxy, include-other-group=🇺🇳 Nodes
 🐠 Final = select, 🚀 Proxy, 🎯 Direct, include-other-group=🇺🇳 Nodes
+
+# 智能选择和节点组
 🌏 Auto = smart, include-other-group=🇺🇳 Nodes
 🎯 Direct = select, DIRECT, hidden=1
 🇺🇳 Nodes = select, {{ $proxyNames }}, hidden=1
@@ -177,9 +193,3 @@ FINAL, 🐠 Final, dns-failed
 [URL Rewrite]
 ^https?:\/\/(www.)?g\.cn https://www.google.com 302
 ^https?:\/\/(www.)?google\.cn https://www.google.com 302
-
-{{- range $proxy := $supportedProxies }}
-  {{- if not (or (eq $proxy.Type "shadowsocks") (eq $proxy.Type "vmess") (eq $proxy.Type "trojan") (eq $proxy.Type "hysteria2") (eq $proxy.Type "hysteria") (eq $proxy.Type "tuic")) }}
-# Skipped (unsupported by Surge): {{ $proxy.Name }} ({{ $proxy.Type }})
-  {{- end }}
-{{- end }}
