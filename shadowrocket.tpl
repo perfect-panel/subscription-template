@@ -69,6 +69,48 @@ STATUS=Traffic: {{ $used }} GiB/{{ $total }} GiB | Expires: {{ $ExpiredAt }}
 
   {{- $SkipVerify := $proxy.AllowInsecure -}}
 
+  {{- /* 公共传输层配置函数 */ -}}
+  {{- $buildTransportParams := dict -}}
+  {{- if ne (default "" $proxy.Transport) "" -}}
+    {{- $_ := set $buildTransportParams "type" (ternary "ws" $proxy.Transport (eq $proxy.Transport "websocket")) -}}
+  {{- end -}}
+  {{- if and (or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") (eq $proxy.Transport "xhttp") (eq $proxy.Transport "httpupgrade")) (ne (default "" $proxy.Host) "") -}}
+    {{- $_ := set $buildTransportParams "host" $proxy.Host -}}
+  {{- end -}}
+  {{- if and (or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") (eq $proxy.Transport "xhttp") (eq $proxy.Transport "httpupgrade")) (ne (default "" $proxy.Path) "") -}}
+    {{- $_ := set $buildTransportParams "path" ($proxy.Path | urlquery) -}}
+  {{- end -}}
+  {{- if and (eq $proxy.Transport "grpc") (ne (default "" $proxy.ServiceName) "") -}}
+    {{- $_ := set $buildTransportParams "serviceName" $proxy.ServiceName -}}
+  {{- end -}}
+  {{- if and (eq $proxy.Transport "xhttp") (ne (default "" $proxy.XhttpMode) "") -}}
+    {{- $_ := set $buildTransportParams "mode" $proxy.XhttpMode -}}
+  {{- end -}}
+  {{- if and (eq $proxy.Transport "xhttp") (ne (default "" $proxy.XhttpExtra) "") -}}
+    {{- $_ := set $buildTransportParams "extra" (urlquery $proxy.XhttpExtra) -}}
+  {{- end -}}
+
+  {{- /* 公共安全层配置 */ -}}
+  {{- $buildSecurityParams := dict -}}
+  {{- if or (eq $proxy.Security "tls") (eq $proxy.Security "reality") -}}
+    {{- $_ := set $buildSecurityParams "security" $proxy.Security -}}
+  {{- end -}}
+  {{- if ne (default "" $proxy.SNI) "" -}}
+    {{- $_ := set $buildSecurityParams "sni" $proxy.SNI -}}
+  {{- end -}}
+  {{- if $SkipVerify -}}
+    {{- $_ := set $buildSecurityParams "allowInsecure" "1" -}}
+  {{- end -}}
+  {{- if ne (default "" $proxy.Fingerprint) "" -}}
+    {{- $_ := set $buildSecurityParams "fp" $proxy.Fingerprint -}}
+  {{- end -}}
+  {{- if and (eq $proxy.Security "reality") (ne (default "" $proxy.RealityPublicKey) "") -}}
+    {{- $_ := set $buildSecurityParams "pbk" $proxy.RealityPublicKey -}}
+  {{- end -}}
+  {{- if and (eq $proxy.Security "reality") (ne (default "" $proxy.RealityShortId) "") -}}
+    {{- $_ := set $buildSecurityParams "sid" $proxy.RealityShortId -}}
+  {{- end -}}
+
   {{- if eq $proxy.Type "shadowsocks" }}
   {{- $params := list -}}
   {{- if ne (default "" $proxy.Obfs) "" -}}
@@ -79,69 +121,120 @@ STATUS=Traffic: {{ $used }} GiB/{{ $total }} GiB | Expires: {{ $ExpiredAt }}
   {{- end -}}
   {{- if ne (default "" $proxy.ObfsPath) "" -}}
     {{- $params = append $params (printf "obfs-uri=%s" ($proxy.ObfsPath | urlquery)) -}}
-  {{- end -}}
+  {{- end }}
 ss://{{ printf "%s:%s" (default "aes-128-gcm" $proxy.Method) $password | b64enc }}@{{ $server }}:{{ $proxy.Port }}{{- if gt (len $params) 0 -}}?{{ $common }}&{{ join "&" $params }}{{- else -}}?{{ $common }}{{- end }}#{{ $proxy.Name }}
-  {{ else if eq $proxy.Type "vmess" }}
-vmess://{{ (dict "v" "2" "ps" $proxy.Name "add" $proxy.Server "port" (printf "%d" $proxy.Port) "id" $password "aid" "0" "net" (ternary "ws" $proxy.Transport (eq $proxy.Transport "websocket")) "type" "none" "host" (default "" $proxy.Host) "path" (default "" $proxy.Path) "tls" (ternary "tls" "" (or (eq $proxy.Security "tls") (eq $proxy.Security "reality"))) "sni" $proxy.SNI) | toJson | b64enc }}
-  {{ else if eq $proxy.Type "vless" }}
-  {{- $params := list (printf "encryption=none") -}}
+  {{- else if eq $proxy.Type "vmess" }}
+  {{- $vmessDict := dict "v" "2" "ps" $proxy.Name "add" $proxy.Server "port" (printf "%d" $proxy.Port) "id" $password "aid" "0" "net" "tcp" "type" "none" -}}
+  {{- if hasKey $buildTransportParams "type" -}}
+    {{- $_ := set $vmessDict "net" (index $buildTransportParams "type") -}}
+  {{- end -}}
+  {{- if hasKey $buildTransportParams "host" -}}
+    {{- $_ := set $vmessDict "host" (index $buildTransportParams "host") -}}
+  {{- end -}}
+  {{- if hasKey $buildTransportParams "path" -}}
+    {{- $_ := set $vmessDict "path" (index $buildTransportParams "path") -}}
+  {{- end -}}
+  {{- if and (eq $proxy.Transport "grpc") (hasKey $buildTransportParams "serviceName") -}}
+    {{- $_ := set $vmessDict "path" (index $buildTransportParams "serviceName") -}}
+  {{- end -}}
+  {{- if hasKey $buildTransportParams "mode" -}}
+    {{- $_ := set $vmessDict "xhttpMode" (index $buildTransportParams "mode") -}}
+  {{- end -}}
+  {{- if hasKey $buildTransportParams "extra" -}}
+    {{- $_ := set $vmessDict "xhttpExtra" (index $buildTransportParams "extra") -}}
+  {{- end -}}
+  {{- if hasKey $buildSecurityParams "security" -}}
+    {{- $_ := set $vmessDict "tls" (index $buildSecurityParams "security") -}}
+  {{- end -}}
+  {{- if hasKey $buildSecurityParams "sni" -}}
+    {{- $_ := set $vmessDict "sni" (index $buildSecurityParams "sni") -}}
+  {{- end -}}
+  {{- if hasKey $buildSecurityParams "fp" -}}
+    {{- $_ := set $vmessDict "fp" (index $buildSecurityParams "fp") -}}
+  {{- end -}}
+  {{- if hasKey $buildSecurityParams "allowInsecure" -}}
+    {{- $_ := set $vmessDict "skip-cert-verify" true -}}
+  {{- end }}
+vmess://{{ $vmessDict | toJson | b64enc }}
+  {{- else if eq $proxy.Type "vless" }}
+  {{- $params := list -}}
+  {{- /* 1. Encryption 加密参数 */ -}}
+  {{- $encryption := default "none" $proxy.Encryption -}}
+  {{- if eq $encryption "none" -}}
+    {{- $params = append $params "encryption=none" -}}
+  {{- else -}}
+    {{- $encParts := list -}}
+    {{- $encParts = append $encParts $encryption -}}
+    {{- if ne (default "" $proxy.Encryption_Mode) "" -}}
+      {{- $encParts = append $encParts $proxy.Encryption_Mode -}}
+    {{- end -}}
+    {{- if ne (default "" $proxy.EncryptionRtt) "" -}}
+      {{- $encParts = append $encParts $proxy.EncryptionRtt -}}
+    {{- end -}}
+    {{- if ne (default "" $proxy.EncryptionClientPadding) "" -}}
+      {{- $encParts = append $encParts $proxy.EncryptionClientPadding -}}
+    {{- end -}}
+    {{- if ne (default "" $proxy.EncryptionPassword) "" -}}
+      {{- $encParts = append $encParts $proxy.EncryptionPassword -}}
+    {{- end -}}
+    {{- $params = append $params (printf "encryption=%s" (join "." $encParts)) -}}
+  {{- end -}}
+  {{- /* 2. Flow 流控参数 */ -}}
   {{- if ne (default "" $proxy.Flow) "none" -}}
     {{- $params = append $params (printf "flow=%s" $proxy.Flow) -}}
   {{- end -}}
-  {{- if ne (default "" $proxy.Transport) "" -}}
-    {{- $params = append $params (printf "type=%s" (ternary "ws" $proxy.Transport (eq $proxy.Transport "websocket"))) -}}
+  {{- /* 3. Security 安全参数 */ -}}
+  {{- if hasKey $buildSecurityParams "security" -}}
+    {{- $params = append $params (printf "security=%s" (index $buildSecurityParams "security")) -}}
   {{- end -}}
-  {{- if and (or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") (eq $proxy.Transport "xhttp") (eq $proxy.Transport "httpupgrade")) (ne (default "" $proxy.Host) "") -}}
-    {{- $params = append $params (printf "host=%s" $proxy.Host) -}}
+  {{- if hasKey $buildSecurityParams "sni" -}}
+    {{- $params = append $params (printf "sni=%s" (index $buildSecurityParams "sni")) -}}
   {{- end -}}
-  {{- if and (or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") (eq $proxy.Transport "xhttp") (eq $proxy.Transport "httpupgrade")) (ne (default "" $proxy.Path) "") -}}
-    {{- $params = append $params (printf "path=%s" ($proxy.Path | urlquery)) -}}
+  {{- if hasKey $buildSecurityParams "fp" -}}
+    {{- $params = append $params (printf "fp=%s" (index $buildSecurityParams "fp")) -}}
   {{- end -}}
-  {{- if and (eq $proxy.Transport "grpc") (ne (default "" $proxy.ServiceName) "") -}}
-    {{- $params = append $params (printf "serviceName=%s" $proxy.ServiceName) -}}
-  {{- end -}}
-  {{- if or (eq $proxy.Security "tls") (eq $proxy.Security "reality") -}}
-    {{- $params = append $params (printf "security=%s" $proxy.Security) -}}
-  {{- end -}}
-  {{- if ne (default "" $proxy.SNI) "" -}}
-    {{- $params = append $params (printf "sni=%s" $proxy.SNI) -}}
-  {{- end -}}
-  {{- if $SkipVerify -}}
+  {{- if hasKey $buildSecurityParams "allowInsecure" -}}
     {{- $params = append $params "allowInsecure=1" -}}
   {{- end -}}
-  {{- if ne (default "" $proxy.Fingerprint) "" -}}
-    {{- $params = append $params (printf "fp=%s" $proxy.Fingerprint) -}}
+  {{- if hasKey $buildSecurityParams "pbk" -}}
+    {{- $params = append $params (printf "pbk=%s" (index $buildSecurityParams "pbk")) -}}
   {{- end -}}
-  {{- if and (eq $proxy.Security "reality") (ne (default "" $proxy.RealityPublicKey) "") -}}
-    {{- $params = append $params (printf "pbk=%s" $proxy.RealityPublicKey) -}}
+  {{- if hasKey $buildSecurityParams "sid" -}}
+    {{- $params = append $params (printf "sid=%s" (index $buildSecurityParams "sid")) -}}
   {{- end -}}
-  {{- if and (eq $proxy.Security "reality") (ne (default "" $proxy.RealityShortId) "") -}}
-    {{- $params = append $params (printf "sid=%s" $proxy.RealityShortId) -}}
+  {{- /* 4. Transport 传输层参数 */ -}}
+  {{- if hasKey $buildTransportParams "type" -}}
+    {{- $params = append $params (printf "type=%s" (index $buildTransportParams "type")) -}}
   {{- end -}}
-  {{- $params = append $params $common -}}
+  {{- if hasKey $buildTransportParams "host" -}}
+    {{- $params = append $params (printf "host=%s" (index $buildTransportParams "host")) -}}
+  {{- end -}}
+  {{- if hasKey $buildTransportParams "path" -}}
+    {{- $params = append $params (printf "path=%s" (index $buildTransportParams "path")) -}}
+  {{- end -}}
+  {{- if hasKey $buildTransportParams "serviceName" -}}
+    {{- $params = append $params (printf "serviceName=%s" (index $buildTransportParams "serviceName")) -}}
+  {{- end -}}
+  {{- if hasKey $buildTransportParams "mode" -}}
+    {{- $params = append $params (printf "mode=%s" (index $buildTransportParams "mode")) -}}
+  {{- end -}}
+  {{- if hasKey $buildTransportParams "extra" -}}
+    {{- $params = append $params (printf "extra=%s" (index $buildTransportParams "extra")) -}}
+  {{- end -}}
+  {{- /* 5. Common 通用参数 */ -}}
+  {{- $params = append $params $common }}
 vless://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
-  {{ else if eq $proxy.Type "trojan" }}
+  {{- else if eq $proxy.Type "trojan" }}
   {{- $params := list -}}
-  {{- if or (eq $proxy.Security "tls") (eq $proxy.Security "reality") -}}
-    {{- if ne (default "" $proxy.SNI) "" -}}
-      {{- $params = append $params (printf "sni=%s" $proxy.SNI) -}}
-    {{- end -}}
-    {{- if $SkipVerify -}}
-      {{- $params = append $params "allowInsecure=1" -}}
-    {{- end -}}
+  {{- range $key, $val := $buildTransportParams -}}
+    {{- $params = append $params (printf "%s=%s" $key $val) -}}
   {{- end -}}
-  {{- if ne (default "" $proxy.Transport) "" -}}
-    {{- $params = append $params (printf "type=%s" $proxy.Transport) -}}
-    {{- if and (eq $proxy.Transport "ws") (ne (default "" $proxy.Host) "") -}}
-      {{- $params = append $params (printf "host=%s" $proxy.Host) -}}
-    {{- end -}}
-    {{- if and (eq $proxy.Transport "ws") (ne (default "" $proxy.Path) "") -}}
-      {{- $params = append $params (printf "path=%s" ($proxy.Path | urlquery)) -}}
-    {{- end -}}
+  {{- range $key, $val := $buildSecurityParams -}}
+    {{- $params = append $params (printf "%s=%s" $key $val) -}}
   {{- end -}}
-  {{- $params = append $params $common -}}
+  {{- $params = append $params $common }}
 trojan://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
-  {{ else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hysteria") }}
+  {{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hysteria") }}
   {{- $params := list -}}
   {{- if ne (default "" $proxy.SNI) "" -}}
     {{- $params = append $params (printf "sni=%s" $proxy.SNI) -}}
@@ -154,9 +247,9 @@ trojan://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#
   {{- end -}}
   {{- if ne (default "" $proxy.HopPorts) "" -}}
     {{- $params = append $params (printf "mport=%s" $proxy.HopPorts) -}}
-  {{- end -}}
+  {{- end }}
 hysteria2://{{- if ne $password "" -}}{{ $password }}@{{- end -}}{{ $server }}:{{ $proxy.Port }}?{{ join "&" (append $params $common) }}#{{ $proxy.Name | urlquery }}
-  {{ else if eq $proxy.Type "tuic" }}
+  {{- else if eq $proxy.Type "tuic" }}
   {{- $params := list -}}
   {{- if ne (default "" $proxy.CongestionController) "" -}}
     {{- $params = append $params (printf "congestion_controller=%s" $proxy.CongestionController) -}}
@@ -176,20 +269,20 @@ hysteria2://{{- if ne $password "" -}}{{ $password }}@{{- end -}}{{ $server }}:{
   {{- if $proxy.AllowInsecure -}}
     {{- $params = append $params "allow_insecure=1" -}}
   {{- end -}}
-  {{- $params = append $params $common -}}
+  {{- $params = append $params $common }}
 tuic://{{ default "" $proxy.ServerKey }}:{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
-  {{ else if eq $proxy.Type "anytls" }}
+  {{- else if eq $proxy.Type "anytls" }}
   {{- $params := list -}}
   {{- if ne (default "" $proxy.SNI) "" -}}
     {{- $params = append $params (printf "sni=%s" $proxy.SNI) -}}
   {{- end -}}
-  {{- $params = append $params $common -}}
+  {{- $params = append $params $common }}
 anytls://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
-  {{ else if or (eq $proxy.Type "http") (eq $proxy.Type "https") }}
-  {{- $user := default $password $proxy.Username -}}
+  {{- else if or (eq $proxy.Type "http") (eq $proxy.Type "https") }}
+  {{- $user := default $password $proxy.Username }}
 http{{- if eq $proxy.Type "https" -}}s{{- end -}}://{{- if or (ne (default "" $user) "") (ne (default "" $password) "") -}}{{ $user }}:{{ $password }}@{{- end -}}{{ $server }}:{{ $proxy.Port }}#{{ $proxy.Name }}
-  {{ else if or (eq $proxy.Type "socks") (eq $proxy.Type "socks5") (eq $proxy.Type "socks5-tls") }}
-  {{- $user := default $password $proxy.Username -}}
+  {{- else if or (eq $proxy.Type "socks") (eq $proxy.Type "socks5") (eq $proxy.Type "socks5-tls") }}
+  {{- $user := default $password $proxy.Username }}
 socks5://{{- if or (ne (default "" $user) "") (ne (default "" $password) "") -}}{{ $user }}:{{ $password }}@{{- end -}}{{ $server }}:{{ $proxy.Port }}{{- if eq $proxy.Type "socks5-tls" }}?tls=1{{- end }}#{{ $proxy.Name }}
   {{- end }}
 {{- end }}
