@@ -71,22 +71,39 @@ STATUS=Traffic: {{ $used }} GiB/{{ $total }} GiB | Expires: {{ $ExpiredAt }}
 
   {{- /* 公共传输层配置函数 */ -}}
   {{- $buildTransportParams := dict -}}
-  {{- if ne (default "" $proxy.Transport) "" -}}
-    {{- $_ := set $buildTransportParams "type" (ternary "ws" $proxy.Transport (eq $proxy.Transport "websocket")) -}}
+  {{- $transport := default "tcp" $proxy.Transport -}}
+  {{- if ne $transport "" -}}
+    {{- $_ := set $buildTransportParams "type" (ternary "ws" $transport (eq $transport "websocket")) -}}
   {{- end -}}
-  {{- if and (or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") (eq $proxy.Transport "xhttp") (eq $proxy.Transport "httpupgrade")) (ne (default "" $proxy.Host) "") -}}
+  {{- /* TCP 传输类型配置 */ -}}
+  {{- if eq $transport "tcp" -}}
+    {{- $headerType := default "none" $proxy.HeaderType -}}
+    {{- if ne $headerType "none" -}}
+      {{- $_ := set $buildTransportParams "headerType" $headerType -}}
+    {{- end -}}
+    {{- if and (eq $headerType "http") (ne (default "" $proxy.Host) "") -}}
+      {{- $_ := set $buildTransportParams "host" $proxy.Host -}}
+    {{- end -}}
+    {{- if and (eq $headerType "http") (ne (default "" $proxy.Path) "") -}}
+      {{- $_ := set $buildTransportParams "path" ($proxy.Path | urlquery) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- /* WebSocket/xhttp/httpupgrade 传输类型配置 */ -}}
+  {{- if and (or (eq $transport "ws") (eq $transport "websocket") (eq $transport "xhttp") (eq $transport "httpupgrade")) (ne (default "" $proxy.Host) "") -}}
     {{- $_ := set $buildTransportParams "host" $proxy.Host -}}
   {{- end -}}
-  {{- if and (or (eq $proxy.Transport "ws") (eq $proxy.Transport "websocket") (eq $proxy.Transport "xhttp") (eq $proxy.Transport "httpupgrade")) (ne (default "" $proxy.Path) "") -}}
+  {{- if and (or (eq $transport "ws") (eq $transport "websocket") (eq $transport "xhttp") (eq $transport "httpupgrade")) (ne (default "" $proxy.Path) "") -}}
     {{- $_ := set $buildTransportParams "path" ($proxy.Path | urlquery) -}}
   {{- end -}}
-  {{- if and (eq $proxy.Transport "grpc") (ne (default "" $proxy.ServiceName) "") -}}
+  {{- /* gRPC 传输类型配置 */ -}}
+  {{- if and (eq $transport "grpc") (ne (default "" $proxy.ServiceName) "") -}}
     {{- $_ := set $buildTransportParams "serviceName" $proxy.ServiceName -}}
   {{- end -}}
-  {{- if and (eq $proxy.Transport "xhttp") (ne (default "" $proxy.XhttpMode) "") -}}
+  {{- /* xhttp 特有配置 */ -}}
+  {{- if and (eq $transport "xhttp") (ne (default "" $proxy.XhttpMode) "") -}}
     {{- $_ := set $buildTransportParams "mode" $proxy.XhttpMode -}}
   {{- end -}}
-  {{- if and (eq $proxy.Transport "xhttp") (ne (default "" $proxy.XhttpExtra) "") -}}
+  {{- if and (eq $transport "xhttp") (ne (default "" $proxy.XhttpExtra) "") -}}
     {{- $_ := set $buildTransportParams "extra" (urlquery $proxy.XhttpExtra) -}}
   {{- end -}}
 
@@ -113,6 +130,7 @@ STATUS=Traffic: {{ $used }} GiB/{{ $total }} GiB | Expires: {{ $ExpiredAt }}
 
   {{- if eq $proxy.Type "shadowsocks" }}
   {{- $params := list -}}
+  {{- /* Shadowsocks 特有的 obfs 插件参数 */ -}}
   {{- if ne (default "" $proxy.Obfs) "" -}}
     {{- $params = append $params (printf "obfs=%s" $proxy.Obfs) -}}
   {{- end -}}
@@ -121,8 +139,18 @@ STATUS=Traffic: {{ $used }} GiB/{{ $total }} GiB | Expires: {{ $ExpiredAt }}
   {{- end -}}
   {{- if ne (default "" $proxy.ObfsPath) "" -}}
     {{- $params = append $params (printf "obfs-uri=%s" ($proxy.ObfsPath | urlquery)) -}}
-  {{- end }}
-ss://{{ printf "%s:%s" (default "aes-128-gcm" $proxy.Method) $password | b64enc }}@{{ $server }}:{{ $proxy.Port }}{{- if gt (len $params) 0 -}}?{{ $common }}&{{ join "&" $params }}{{- else -}}?{{ $common }}{{- end }}#{{ $proxy.Name }}
+  {{- end -}}
+  {{- /* 使用公共传输层配置 */ -}}
+  {{- range $key, $val := $buildTransportParams -}}
+    {{- $params = append $params (printf "%s=%s" $key $val) -}}
+  {{- end -}}
+  {{- /* 使用公共安全层配置 */ -}}
+  {{- range $key, $val := $buildSecurityParams -}}
+    {{- $params = append $params (printf "%s=%s" $key $val) -}}
+  {{- end -}}
+  {{- /* 添加公共参数 */ -}}
+  {{- $params = append $params $common }}
+ss://{{ printf "%s:%s" (default "aes-128-gcm" $proxy.Method) $password | b64enc }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
   {{- else if eq $proxy.Type "vmess" }}
   {{- $vmessDict := dict "v" "2" "ps" $proxy.Name "add" $proxy.Server "port" (printf "%d" $proxy.Port) "id" $password "aid" "0" "net" "tcp" "type" "none" -}}
   {{- if hasKey $buildTransportParams "type" -}}
@@ -134,7 +162,7 @@ ss://{{ printf "%s:%s" (default "aes-128-gcm" $proxy.Method) $password | b64enc 
   {{- if hasKey $buildTransportParams "path" -}}
     {{- $_ := set $vmessDict "path" (index $buildTransportParams "path") -}}
   {{- end -}}
-  {{- if and (eq $proxy.Transport "grpc") (hasKey $buildTransportParams "serviceName") -}}
+  {{- if and (eq $transport "grpc") (hasKey $buildTransportParams "serviceName") -}}
     {{- $_ := set $vmessDict "path" (index $buildTransportParams "serviceName") -}}
   {{- end -}}
   {{- if hasKey $buildTransportParams "mode" -}}
@@ -273,8 +301,13 @@ hysteria2://{{- if ne $password "" -}}{{ $password }}@{{- end -}}{{ $server }}:{
 tuic://{{ default "" $proxy.ServerKey }}:{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
   {{- else if eq $proxy.Type "anytls" }}
   {{- $params := list -}}
-  {{- if ne (default "" $proxy.SNI) "" -}}
-    {{- $params = append $params (printf "sni=%s" $proxy.SNI) -}}
+  {{- /* 使用公共传输层配置 */ -}}
+  {{- range $key, $val := $buildTransportParams -}}
+    {{- $params = append $params (printf "%s=%s" $key $val) -}}
+  {{- end -}}
+  {{- /* 使用公共安全层配置 */ -}}
+  {{- range $key, $val := $buildSecurityParams -}}
+    {{- $params = append $params (printf "%s=%s" $key $val) -}}
   {{- end -}}
   {{- $params = append $params $common }}
 anytls://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
