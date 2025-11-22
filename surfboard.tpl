@@ -13,12 +13,13 @@
   {{- $ExpiredAt = $expStr -}}
 {{- end -}}
 
-{{- /* 节点排序逻辑 */ -}}
-{{- $sortConfig := dict "Sort" "asc" -}}
+{{- $sortFields := list "Sort" "Port" "Name" -}}
+{{- $sortConfig := dict "Sort" "asc" "Port" "asc" "Name" "asc" -}}
 {{- $byKey := dict -}}
 {{- range $p := .Proxies -}}
   {{- $keyParts := list -}}
-  {{- range $field, $order := $sortConfig -}}
+  {{- range $field := $sortFields -}}
+    {{- $order := index $sortConfig $field -}}
     {{- $val := default "" (printf "%v" (index $p $field)) -}}
     {{- if or (eq $field "Sort") (eq $field "Port") -}}
       {{- $val = printf "%08d" (int (default 0 (index $p $field))) -}}
