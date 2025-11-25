@@ -66,6 +66,7 @@ log-level: info
 unified-delay: true
 tcp-concurrent: true
 external-controller: '0.0.0.0:9090'
+global-client-fingerprint: chrome
 tun:
   enable: true
   stack: system
@@ -75,13 +76,50 @@ dns:
   cache-algorithm: arc
   listen: '0.0.0.0:1053'
   ipv6: true
+  use-hosts: true
+  use-system-hosts: true
+  respect-rules: false
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
-  fake-ip-filter: ['*.lan', 'lens.l.google.com', '*.srv.nintendo.net', '*.stun.playstation.net', 'xbox.*.*.microsoft.com', '*.xboxlive.com', '*.msftncsi.com', '*.msftconnecttest.com']
-  default-nameserver: [119.29.29.29, 223.5.5.5]
-  nameserver: [system, 119.29.29.29, 223.5.5.5]
-  fallback: [8.8.8.8, 1.1.1.1]
-  fallback-filter: { geoip: true, geoip-code: CN }
+  fake-ip-filter:
+    - '*.lan'
+    - 'localhost'
+    - 'lens.l.google.com'
+    - '*.srv.nintendo.net'
+    - '*.stun.playstation.net'
+    - 'xbox.*.*.microsoft.com'
+    - '*.xboxlive.com'
+    - '*.msftncsi.com'
+    - '*.msftconnecttest.com'
+    - 'time.*.com'
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  nameserver:
+    - https://cloudflare-dns.com/dns-query
+    - https://dns.google/dns-query
+  fallback:
+    - tls://1.1.1.1
+    - tls://8.8.8.8
+  proxy-server-nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  direct-nameserver:
+    - system
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  direct-nameserver-follow-policy: false
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    geosite:
+      - gfw
+      - youtube
+    domain:
+      - '+.google.com'
+      - '+.facebook.com'
+      - '+.twitter.com'
+      - '+.telegram.org'
 
 proxies:
 {{- range $proxy := $supportedProxies }}
