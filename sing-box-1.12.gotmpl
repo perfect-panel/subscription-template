@@ -172,7 +172,11 @@
 { "type": "vless", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "uuid": "{{ $pwd }}"{{ $flowOpts }}{{ if $transportOpts }}, {{ $transportOpts }}{{ end }}{{ if $realityOpts }}, {{ $realityOpts }}{{ else if $tlsOpts }}, {{ $tlsOpts }}{{ end }} }
 
 {{- else if eq $proxy.Type "vmess" -}}
-{ "type": "vmess", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "uuid": "{{ $pwd }}", "security": "auto"{{ if $transportOpts }}, {{ $transportOpts }}{{ end }}{{ if $tlsOpts }}, {{ $tlsOpts }}{{ end }} }
+{{- $vmessTLS := "" -}}
+{{- if and $tlsOpts (ne $proxy.Transport "tcp") -}}
+  {{- $vmessTLS = $tlsOpts -}}
+{{- end -}}
+{ "type": "vmess", "tag": "{{ $name }}", "server": "{{ $server }}", "server_port": {{ $port }}, "uuid": "{{ $pwd }}", "security": "auto"{{ if $transportOpts }}, {{ $transportOpts }}{{ end }}{{ if $vmessTLS }}, {{ $vmessTLS }}{{ end }} }
 
 {{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hy2") -}}
 {{- $obfsOpts := "" -}}
