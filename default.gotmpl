@@ -195,8 +195,8 @@ vmess://{{ $vmessDict | toJson | b64enc }}
   {{- else -}}
     {{- $encParts := list -}}
     {{- $encParts = append $encParts $encryption -}}
-    {{- if ne (default "" $proxy.Encryption_Mode) "" -}}
-      {{- $encParts = append $encParts $proxy.Encryption_Mode -}}
+    {{- if ne (default "" $proxy.EncryptionMode) "" -}}
+      {{- $encParts = append $encParts $proxy.EncryptionMode -}}
     {{- end -}}
     {{- if ne (default "" $proxy.EncryptionRtt) "" -}}
       {{- $encParts = append $encParts $proxy.EncryptionRtt -}}
