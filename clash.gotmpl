@@ -265,8 +265,10 @@ proxies:
   xhttp-opts:
     path: {{ default "/" $proxy.Path }}
     {{- if ne (default "" $proxy.Host) "" }}
-    headers:
-      Host: {{ $proxy.Host }}
+    host: {{ $proxy.Host }}
+    {{- end }}
+    {{- if ne (default "" $proxy.XhttpMode) "" }}
+    mode: {{ $proxy.XhttpMode }}
     {{- end }}
   {{- else if eq $proxy.Transport "grpc" }}
   network: grpc
