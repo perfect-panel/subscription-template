@@ -129,6 +129,9 @@ STATUS=Traffic: {{ $used }} GiB/{{ $total }} GiB | Expires: {{ $ExpiredAt }}
   {{- if and (eq $proxy.Security "reality") (ne (default "" $proxy.RealityShortId) "") -}}
     {{- $_ := set $buildSecurityParams "sid" $proxy.RealityShortId -}}
   {{- end -}}
+  {{- if $proxy.EchEnable -}}
+    {{- $_ := set $buildSecurityParams "ech" (printf "%s+udp://1.1.1.1" (default "" $proxy.EchServerName) | urlquery) -}}
+  {{- end -}}
 
   {{- if eq $proxy.Type "shadowsocks" }}
   {{- $params := list -}}
@@ -184,6 +187,9 @@ ss://{{ printf "%s:%s" (default "aes-128-gcm" $proxy.Method) $password | b64enc 
   {{- end -}}
   {{- if hasKey $buildSecurityParams "allowInsecure" -}}
     {{- $_ := set $vmessDict "skip-cert-verify" true -}}
+  {{- end -}}
+  {{- if hasKey $buildSecurityParams "ech" -}}
+    {{- $_ := set $vmessDict "ech" (index $buildSecurityParams "ech") -}}
   {{- end }}
 vmess://{{ $vmessDict | toJson | b64enc }}
   {{- else if eq $proxy.Type "vless" }}
@@ -210,7 +216,7 @@ vmess://{{ $vmessDict | toJson | b64enc }}
     {{- $params = append $params (printf "encryption=%s" (join "." $encParts)) -}}
   {{- end -}}
   {{- /* 2. Flow 流控参数 */ -}}
-  {{- if ne (default "" $proxy.Flow) "none" -}}
+  {{- if and (ne (default "" $proxy.Flow) "") (ne $proxy.Flow "none") -}}
     {{- $params = append $params (printf "flow=%s" $proxy.Flow) -}}
   {{- end -}}
   {{- /* 3. Security 安全参数 */ -}}
@@ -231,6 +237,9 @@ vmess://{{ $vmessDict | toJson | b64enc }}
   {{- end -}}
   {{- if hasKey $buildSecurityParams "sid" -}}
     {{- $params = append $params (printf "sid=%s" (index $buildSecurityParams "sid")) -}}
+  {{- end -}}
+  {{- if hasKey $buildSecurityParams "ech" -}}
+    {{- $params = append $params (printf "ech=%s" (index $buildSecurityParams "ech")) -}}
   {{- end -}}
   {{- /* 4. Transport 传输层参数 */ -}}
   {{- if hasKey $buildTransportParams "type" -}}
