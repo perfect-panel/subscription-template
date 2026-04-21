@@ -202,6 +202,13 @@ proxies:
   {{- if ne (default "" $proxy.Fingerprint) "" }}
   client-fingerprint: {{ $proxy.Fingerprint }}
   {{- end }}
+  {{- if $proxy.EchEnable }}
+  ech-opts:
+    enable: true
+    {{- if ne (default "" $proxy.EchServerName) "" }}
+    query-server-name: {{ $proxy.EchServerName }}
+    {{- end }}
+  {{- end }}
 {{- else if eq $proxy.Type "vless" }}
   {{- $encryptionStr := "" -}}
   {{- $encryption := default "none" $proxy.Encryption -}}
@@ -294,6 +301,13 @@ proxies:
     short-id: {{ $proxy.RealityShortId }}
     {{- end }}
   {{- end }}
+  {{- if $proxy.EchEnable }}
+  ech-opts:
+    enable: true
+    {{- if ne (default "" $proxy.EchServerName) "" }}
+    query-server-name: {{ $proxy.EchServerName }}
+    {{- end }}
+  {{- end }}
 {{- else if eq $proxy.Type "trojan" }}
 - name: {{ $proxy.Name | quote }}
   type: trojan
@@ -343,6 +357,13 @@ proxies:
   grpc-opts:
     grpc-service-name: {{ default "grpc" $proxy.ServiceName }}
   {{- end }}
+  {{- if $proxy.EchEnable }}
+  ech-opts:
+    enable: true
+    {{- if ne (default "" $proxy.EchServerName) "" }}
+    query-server-name: {{ $proxy.EchServerName }}
+    {{- end }}
+  {{- end }}
 {{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hysteria") }}
 - name: {{ $proxy.Name | quote }}
   type: hysteria2
@@ -373,6 +394,13 @@ proxies:
   {{- if ne (default "" (printf "%v" $proxy.DownMbps)) "" }}
   down: "{{ $proxy.DownMbps }} Mbps"
   {{- end }}
+  {{- if $proxy.EchEnable }}
+  ech-opts:
+    enable: true
+    {{- if ne (default "" $proxy.EchServerName) "" }}
+    query-server-name: {{ $proxy.EchServerName }}
+    {{- end }}
+  {{- end }}
 {{- else if eq $proxy.Type "tuic" }}
 - name: {{ $proxy.Name | quote }}
   type: tuic
@@ -399,6 +427,13 @@ proxies:
   {{- end }}
   {{- if ne (default "" $proxy.CongestionController) "" }}
   congestion-controller: {{ $proxy.CongestionController }}
+  {{- end }}
+  {{- if $proxy.EchEnable }}
+  ech-opts:
+    enable: true
+    {{- if ne (default "" $proxy.EchServerName) "" }}
+    query-server-name: {{ $proxy.EchServerName }}
+    {{- end }}
   {{- end }}
 {{- else if eq $proxy.Type "wireguard" }}
 - name: {{ $proxy.Name | quote }}
@@ -434,6 +469,13 @@ proxies:
   {{- end }}
   {{- if ne (default "" $proxy.Fingerprint) "" }}
   client-fingerprint: {{ $proxy.Fingerprint }}
+  {{- end }}
+  {{- if $proxy.EchEnable }}
+  ech-opts:
+    enable: true
+    {{- if ne (default "" $proxy.EchServerName) "" }}
+    query-server-name: {{ $proxy.EchServerName }}
+    {{- end }}
   {{- end }}
 {{- else }}
 - name: {{ $proxy.Name | quote }}
