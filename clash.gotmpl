@@ -199,6 +199,9 @@ proxies:
   {{- if $SkipVerify }}
   skip-cert-verify: true
   {{- end }}
+  {{- if ne (default "" $proxy.CertPinSHA256) "" }}
+  fingerprint: {{ $proxy.CertPinSHA256 }}
+  {{- end }}
   {{- if ne (default "" $proxy.Fingerprint) "" }}
   client-fingerprint: {{ $proxy.Fingerprint }}
   {{- end }}
@@ -320,6 +323,9 @@ proxies:
   {{- if $proxy.AllowInsecure }}
   skip-cert-verify: true
   {{- end }}
+  {{- if ne (default "" $proxy.CertPinSHA256) "" }}
+  fingerprint: {{ $proxy.CertPinSHA256 }}
+  {{- end }}
   {{- if ne (default "" $proxy.Fingerprint) "" }}
   client-fingerprint: {{ $proxy.Fingerprint }}
   {{- end }}
@@ -353,6 +359,9 @@ proxies:
   {{- end }}
   {{- if $SkipVerify }}
   skip-cert-verify: true
+  {{- end }}
+  {{- if ne (default "" $proxy.CertPinSHA256) "" }}
+  fingerprint: {{ $proxy.CertPinSHA256 }}
   {{- end }}
   {{- if ne (default "" $proxy.Fingerprint) "" }}
   client-fingerprint: {{ $proxy.Fingerprint }}
@@ -407,6 +416,9 @@ proxies:
   {{- if $proxy.AllowInsecure }}
   skip-cert-verify: true
   {{- end }}
+  {{- if ne (default "" $proxy.CertPinSHA256) "" }}
+  fingerprint: {{ $proxy.CertPinSHA256 }}
+  {{- end }}
   {{- if ne (default "" $proxy.ObfsPassword) "" }}
   obfs: salamander
   obfs-password: {{ $proxy.ObfsPassword }}
@@ -444,6 +456,9 @@ proxies:
   {{- end }}
   {{- if $proxy.AllowInsecure }}
   skip-cert-verify: true
+  {{- end }}
+  {{- if ne (default "" $proxy.CertPinSHA256) "" }}
+  fingerprint: {{ $proxy.CertPinSHA256 }}
   {{- end }}
   {{- if $proxy.DisableSNI }}
   disable-sni: true
@@ -495,6 +510,9 @@ proxies:
   {{- end }}
   {{- if $proxy.AllowInsecure }}
   skip-cert-verify: true
+  {{- end }}
+  {{- if ne (default "" $proxy.CertPinSHA256) "" }}
+  fingerprint: {{ $proxy.CertPinSHA256 }}
   {{- end }}
   {{- if ne (default "" $proxy.Fingerprint) "" }}
   client-fingerprint: {{ $proxy.Fingerprint }}
