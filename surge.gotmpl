@@ -36,7 +36,7 @@
   {{- $sorted = append $sorted (index $byKey $k) -}}
 {{- end -}}
 
-{{- $supportSet := dict "shadowsocks" true "vmess" true "vless" true "trojan" true "hysteria2" true "hysteria" true "tuic" true "wireguard" true "anytls" true -}}
+{{- $supportSet := dict "shadowsocks" true "vmess" true "vless" true "trojan" true "hysteria2" true "hysteria" true "tuic" true "wireguard" true "anytls" true "snell" true -}}
 {{- $supportedProxies := list -}}
 {{- range $proxy := $sorted -}}
   {{- if hasKey $supportSet $proxy.Type -}}
@@ -143,6 +143,8 @@ SubscribeInfo = title={{ .SiteName }} - {{ .SubscribeName }}, content=已用流�
 {{ $proxy.Name }} = wireguard, {{ $server }}, {{ $proxy.Port }}, private-key={{ default "" $proxy.ServerKey }}, public-key={{ default "" $proxy.RealityPublicKey }}{{- if ne (default "" $proxy.Path) "" }}, preshared-key={{ $proxy.Path }}{{- end }}{{- if ne (default "" $proxy.RealityServerAddr) "" }}, ip={{ $proxy.RealityServerAddr }}{{- end }}{{- if ne (default 0 $proxy.RealityServerPort) 0 }}, ipv6={{ $proxy.RealityServerPort }}{{- end }}, {{ $common }}
   {{- else if eq $proxy.Type "anytls" }}
 {{ $proxy.Name }} = anytls, {{ $server }}, {{ $proxy.Port }}, password={{ $password }}{{- if ne (default "" $proxy.SNI) "" }}, sni={{ $proxy.SNI }}{{- end }}{{- if $proxy.AllowInsecure }}, skip-cert-verify=true{{- end }}{{- if ne (default "" $proxy.CertPinSHA256) "" }}, server-cert-fingerprint-sha256={{ $proxy.CertPinSHA256 }}{{- end }}, {{ $common }}
+  {{- else if eq $proxy.Type "snell" }}
+{{ $proxy.Name }} = snell, {{ $server }}, {{ $proxy.Port }}, psk={{ $password }}, version={{ default 5 $proxy.Version }}{{- if ne (default "" $proxy.Obfs) "" }}, obfs={{ $proxy.Obfs }}{{- if ne (default "" $proxy.ObfsHost) "" }}, obfs-host={{ $proxy.ObfsHost }}{{- end }}{{- end }}, {{ $common }}
   {{- else }}
 {{ $proxy.Name }} = {{ $proxy.Type }}, {{ $server }}, {{ $proxy.Port }}, {{ $common }}
   {{- end }}

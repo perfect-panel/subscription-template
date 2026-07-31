@@ -41,6 +41,8 @@
 {{- range $proxy := $sorted -}}
   {{- if hasKey $supportSet $proxy.Type -}}
     {{- $supportedProxies = append $supportedProxies $proxy -}}
+  {{- else if and (eq $proxy.Type "snell") (eq (int (default 0 $proxy.Version)) 5) -}}
+    {{- $supportedProxies = append $supportedProxies $proxy -}}
   {{- end -}}
 {{- end -}}
 
@@ -357,6 +359,24 @@ tuic://{{ default "" $proxy.ServerKey }}:{{ $password }}@{{ $server }}:{{ $proxy
   {{- end -}}
   {{- $params = append $params $common }}
 anytls://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
+  {{- else if eq $proxy.Type "snell" }}
+  {{- $params := list -}}
+  {{- /* 混淆走 obfs-local 插件参数，内层分隔符必须编码为 %3D */ -}}
+  {{- if ne (default "" $proxy.Obfs) "" -}}
+    {{- $plugin := list "obfs-local" (printf "obfs%%3D%s" $proxy.Obfs) -}}
+    {{- if ne (default "" $proxy.ObfsHost) "" -}}
+      {{- $plugin = append $plugin (printf "obfs-host%%3D%s" $proxy.ObfsHost) -}}
+    {{- end -}}
+    {{- if ne (default "" $proxy.ObfsPath) "" -}}
+      {{- $plugin = append $plugin (printf "obfs-uri%%3D%s" $proxy.ObfsPath) -}}
+    {{- end -}}
+    {{- $params = append $params (printf "plugin=%s" (join ";" $plugin)) -}}
+  {{- end -}}
+  {{- $params = append $params "version=5" -}}
+  {{- /* Shadowrocket 复用 Shadowsocks 的 method:password 用户信息，snell 无加密算法，算法位是占位值；填充符在 URI 里要去掉 */ -}}
+  {{- $psk := trimAll "=" (printf "chacha20-ietf-poly1305:%s" $password | b64enc) -}}
+  {{- $params = append $params $common }}
+snell://{{ $psk }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
   {{- else if or (eq $proxy.Type "http") (eq $proxy.Type "https") }}
   {{- $user := default $password $proxy.Username }}
 http{{- if eq $proxy.Type "https" -}}s{{- end -}}://{{- if or (ne (default "" $user) "") (ne (default "" $password) "") -}}{{ $user }}:{{ $password }}@{{- end -}}{{ $server }}:{{ $proxy.Port }}#{{ $proxy.Name }}

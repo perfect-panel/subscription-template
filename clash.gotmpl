@@ -41,6 +41,8 @@
 {{- range $proxy := $sorted -}}
   {{- if hasKey $supportSet $proxy.Type -}}
     {{- $supportedProxies = append $supportedProxies $proxy -}}
+  {{- else if and (eq $proxy.Type "snell") (eq (int (default 0 $proxy.Version)) 5) -}}
+    {{- $supportedProxies = append $supportedProxies $proxy -}}
   {{- end -}}
 {{- end -}}
 
@@ -522,6 +524,23 @@ proxies:
     enable: true
     {{- if ne (default "" $proxy.EchServerName) "" }}
     query-server-name: {{ $proxy.EchServerName }}
+    {{- end }}
+  {{- end }}
+{{- else if eq $proxy.Type "snell" }}
+- name: {{ $proxy.Name | quote }}
+  type: snell
+  server: {{ $server }}
+  port: {{ $proxy.Port }}
+  psk: {{ $password }}
+  version: 5
+  reuse: true
+  udp: true
+  tfo: true
+  {{- if ne (default "" $proxy.Obfs) "" }}
+  obfs-opts:
+    mode: {{ $proxy.Obfs }}
+    {{- if ne (default "" $proxy.ObfsHost) "" }}
+    host: {{ $proxy.ObfsHost }}
     {{- end }}
   {{- end }}
 {{- else }}
