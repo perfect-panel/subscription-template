@@ -252,7 +252,12 @@
       {{- $_ := set $out "quic" true -}}
       {{- if $p.QUICCongestionControl -}}{{- $_ := set $out "quic_congestion_control" $p.QUICCongestionControl -}}{{- end -}}
     {{- end -}}
-    {{- $_ := set $out "tls" $tls -}}
+    {{- /* naive 显式拒绝 insecure/alpn/utls/disable_sni 等 TLS 选项(cronet 始终真实校验证书),
+           只能给最小 TLS 块; 自签证书的 naive 节点在 sing-box 上无法使用 */ -}}
+    {{- $naiveTLS := dict "enabled" true -}}
+    {{- if $p.SNI -}}{{- $_ := set $naiveTLS "server_name" $p.SNI -}}{{- end -}}
+    {{- if $tls.ech -}}{{- $_ := set $naiveTLS "ech" $tls.ech -}}{{- end -}}
+    {{- $_ := set $out "tls" $naiveTLS -}}
   {{- end -}}
 
   {{- $nodeOutbounds = append $nodeOutbounds $out -}}
