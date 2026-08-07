@@ -387,7 +387,7 @@ snell://{{ $psk }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $pr
     {{- $params = append $params "allowInsecure=1" -}}
   {{- end -}}
   {{- /* 节点端按 UID:UUID 做 Basic auth，用户名位优先取面板下发的用户 UID */ -}}
-  {{- $user := default (default $password $proxy.Username) $.UserInfo.UID -}}
+  {{- $user := default (default $password $proxy.Username) $.UserInfo.ID -}}
   {{- $userinfo := trimAll "=" (printf "%v:%s@%s:%d" $user $password $server $proxy.Port | b64enc) }}
 http2://{{ $userinfo }}?{{ join "&" $params }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- else if or (eq $proxy.Type "http") (eq $proxy.Type "https") }}
