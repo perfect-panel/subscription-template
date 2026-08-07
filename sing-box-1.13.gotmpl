@@ -228,6 +228,8 @@
     {{- $_ := set $out "type" "naive" -}}
     {{- $_ := set $out "username" (printf "%v" $.UserInfo.ID) -}}
     {{- $_ := set $out "password" $pwd -}}
+    {{- /* 写死 UoT: 无它 naive 不代理 UDP; 节点端为 sing-box naive inbound, 原生解 UoT */ -}}
+    {{- $_ := set $out "udp_over_tcp" true -}}
     {{- /* 面板 Network=udp 表示 QUIC(h3) 监听, 否则走 TCP(h2) */ -}}
     {{- $net := lower (default "" $p.Network) -}}
     {{- if or (eq $net "udp") (eq $net "quic") -}}
