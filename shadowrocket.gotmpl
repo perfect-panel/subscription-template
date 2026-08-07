@@ -36,7 +36,7 @@
   {{- $sorted = append $sorted (index $byKey $k) -}}
 {{- end -}}
 
-{{- $supportSet := dict "shadowsocks" true "vmess" true "vless" true "trojan" true "hysteria2" true "hysteria" true "tuic" true "anytls" true -}}
+{{- $supportSet := dict "shadowsocks" true "vmess" true "vless" true "trojan" true "hysteria2" true "hysteria" true "tuic" true "anytls" true "naive" true "naiveproxy" true "http" true "https" true "socks" true "socks5" true "socks5-tls" true -}}
 {{- $supportedProxies := list -}}
 {{- range $proxy := $sorted -}}
   {{- if hasKey $supportSet $proxy.Type -}}
@@ -161,7 +161,7 @@ STATUS=Traffic: {{ $used }} GiB/{{ $total }} GiB | Expires: {{ $ExpiredAt }}
   {{- end -}}
   {{- /* 添加公共参数 */ -}}
   {{- $params = append $params $common }}
-ss://{{ printf "%s:%s" (default "aes-128-gcm" $proxy.Method) $password | b64enc }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
+ss://{{ printf "%s:%s" (default "aes-128-gcm" $proxy.Method) $password | b64enc }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- else if eq $proxy.Type "vmess" }}
   {{- $vmessDict := dict "v" "2" "ps" $proxy.Name "add" $proxy.Server "port" (printf "%d" $proxy.Port) "id" $password "aid" "0" "net" "tcp" "type" "none" -}}
   {{- if hasKey $buildTransportParams "type" -}}
@@ -293,7 +293,7 @@ vmess://{{ $vmessDict | toJson | b64enc }}
   {{- end -}}
   {{- /* 5. Common 通用参数 */ -}}
   {{- $params = append $params $common }}
-vless://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
+vless://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- else if eq $proxy.Type "trojan" }}
   {{- $params := list -}}
   {{- range $key, $val := $buildTransportParams -}}
@@ -303,7 +303,7 @@ vless://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{
     {{- $params = append $params (printf "%s=%s" $key $val) -}}
   {{- end -}}
   {{- $params = append $params $common }}
-trojan://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
+trojan://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hysteria") }}
   {{- $params := list -}}
   {{- if ne (default "" $proxy.SNI) "" -}}
@@ -321,7 +321,7 @@ trojan://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#
   {{- if ne (default "" $proxy.CertPinSHA256) "" -}}
     {{- $params = append $params (printf "hpkp=%s" $proxy.CertPinSHA256) -}}
   {{- end }}
-hysteria2://{{- if ne $password "" -}}{{ $password }}@{{- end -}}{{ $server }}:{{ $proxy.Port }}?{{ join "&" (append $params $common) }}#{{ $proxy.Name | urlquery }}
+hysteria2://{{- if ne $password "" -}}{{ $password }}@{{- end -}}{{ $server }}:{{ $proxy.Port }}?{{ join "&" (append $params $common) }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- else if eq $proxy.Type "tuic" }}
   {{- $params := list -}}
   {{- if ne (default "" $proxy.CongestionController) "" -}}
@@ -346,7 +346,7 @@ hysteria2://{{- if ne $password "" -}}{{ $password }}@{{- end -}}{{ $server }}:{
     {{- $params = append $params (printf "hpkp=%s" $proxy.CertPinSHA256) -}}
   {{- end -}}
   {{- $params = append $params $common }}
-tuic://{{ default "" $proxy.ServerKey }}:{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
+tuic://{{ default "" $proxy.ServerKey }}:{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- else if eq $proxy.Type "anytls" }}
   {{- $params := list -}}
   {{- /* 使用公共传输层配置 */ -}}
@@ -358,7 +358,7 @@ tuic://{{ default "" $proxy.ServerKey }}:{{ $password }}@{{ $server }}:{{ $proxy
     {{- $params = append $params (printf "%s=%s" $key $val) -}}
   {{- end -}}
   {{- $params = append $params $common }}
-anytls://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
+anytls://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- else if eq $proxy.Type "snell" }}
   {{- $params := list -}}
   {{- /* 混淆走 obfs-local 插件参数，内层分隔符必须编码为 %3D */ -}}
@@ -376,12 +376,25 @@ anytls://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#
   {{- /* Shadowrocket 复用 Shadowsocks 的 method:password 用户信息，snell 无加密算法，算法位是占位值；填充符在 URI 里要去掉 */ -}}
   {{- $psk := trimAll "=" (printf "chacha20-ietf-poly1305:%s" $password | b64enc) -}}
   {{- $params = append $params $common }}
-snell://{{ $psk }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name }}
+snell://{{ $psk }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
+  {{- else if or (eq $proxy.Type "naive") (eq $proxy.Type "naiveproxy") }}
+  {{- /* NaiveProxy：Shadowrocket 以带 padding 的 HTTPS(http2) 代理承载，user:pass@host:port 整体 b64 且去掉填充符 */ -}}
+  {{- $params := list "alpn=h2" -}}
+  {{- $params = append $params (printf "peer=%s" (default $proxy.Server $proxy.SNI)) -}}
+  {{- $params = append $params "padding=1" -}}
+  {{- $params = append $params (printf "fingerprint=%s" (default "Chrome" $proxy.Fingerprint)) -}}
+  {{- if $SkipVerify -}}
+    {{- $params = append $params "allowInsecure=1" -}}
+  {{- end -}}
+  {{- /* 节点端按 UID:UUID 做 Basic auth，用户名位优先取面板下发的用户 UID */ -}}
+  {{- $user := default (default $password $proxy.Username) $.UserInfo.UID -}}
+  {{- $userinfo := trimAll "=" (printf "%v:%s@%s:%d" $user $password $server $proxy.Port | b64enc) }}
+http2://{{ $userinfo }}?{{ join "&" $params }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- else if or (eq $proxy.Type "http") (eq $proxy.Type "https") }}
   {{- $user := default $password $proxy.Username }}
-http{{- if eq $proxy.Type "https" -}}s{{- end -}}://{{- if or (ne (default "" $user) "") (ne (default "" $password) "") -}}{{ $user }}:{{ $password }}@{{- end -}}{{ $server }}:{{ $proxy.Port }}#{{ $proxy.Name }}
+http{{- if eq $proxy.Type "https" -}}s{{- end -}}://{{- if or (ne (default "" $user) "") (ne (default "" $password) "") -}}{{ $user }}:{{ $password }}@{{- end -}}{{ $server }}:{{ $proxy.Port }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- else if or (eq $proxy.Type "socks") (eq $proxy.Type "socks5") (eq $proxy.Type "socks5-tls") }}
   {{- $user := default $password $proxy.Username }}
-socks5://{{- if or (ne (default "" $user) "") (ne (default "" $password) "") -}}{{ $user }}:{{ $password }}@{{- end -}}{{ $server }}:{{ $proxy.Port }}{{- if eq $proxy.Type "socks5-tls" }}?tls=1{{- end }}#{{ $proxy.Name }}
+socks5://{{- if or (ne (default "" $user) "") (ne (default "" $password) "") -}}{{ $user }}:{{ $password }}@{{- end -}}{{ $server }}:{{ $proxy.Port }}{{- if eq $proxy.Type "socks5-tls" }}?tls=1{{- end }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- end }}
 {{- end }}
