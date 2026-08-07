@@ -5,12 +5,12 @@
     - 使用 1.14 新配置: store_dns、显式 http_clients + route.default_http_client
       （替代已弃用的 rule_set.download_detour / independent_cache / store_rdrc），无弃用告警。
     - outbound 全部用 dict+toJson 生成，节点名含引号/反斜杠不会破坏 JSON。
-    - 协议覆盖: shadowsocks(含 2022/obfs/v2ray-plugin)、vmess、vless(reality/vision)、
-      trojan、hysteria2(端口跳跃/salamander)、tuic、anytls、snell(v5/v6, 1.14 新增)、
-      naive(需客户端带 with_naive_outbound 构建, 官方 GUI 客户端默认包含;
-      纯 CLI 精简构建会拒绝该配置)。
+    - 协议覆盖: shadowsocks(含 2022/obfs/v2ray-plugin/shadow-tls 链式)、vmess、
+      vless(reality/vision)、trojan、hysteria2(端口跳跃/salamander)、tuic、anytls、
+      snell(v5/v6, 1.14 新增)、naive(需客户端带 with_naive_outbound 构建,
+      官方 GUI 客户端默认包含; 纯 CLI 精简构建会拒绝该配置)。
       跳过: ssr/mieru(sing-box 不支持)、
-      xhttp 传输与 vless ML-KEM 加密节点、shadow-tls/restls/kcptun 插件节点。
+      xhttp 传输与 vless ML-KEM 加密节点、restls/kcptun 插件节点。
 */ -}}
 {{- $GiB := 1073741824.0 -}}
 {{- $used := printf "%.2f" (divf (add (.UserInfo.Download | default 0 | float64) (.UserInfo.Upload | default 0 | float64)) $GiB) -}}
@@ -62,7 +62,7 @@
     {{- $ok = and (or (eq $enc "") (eq $enc "none")) (ne $tr "xhttp") -}}
   {{- else if eq $t "shadowsocks" -}}
     {{- $plugin := lower (default "" $p.Plugin) -}}
-    {{- $ok = or (eq $plugin "") (eq $plugin "obfs") (eq $plugin "v2ray-plugin") -}}
+    {{- $ok = or (eq $plugin "") (eq $plugin "obfs") (eq $plugin "v2ray-plugin") (eq $plugin "shadow-tls") -}}
   {{- end -}}
   {{- if and $ok (not (hasKey $seen $p.Name)) (not (hasKey $reserved $p.Name)) -}}
     {{- $_ := set $seen $p.Name true -}}
@@ -150,6 +150,21 @@
       {{- if index $popts "path" -}}{{- $opts = printf "%s;path=%s" $opts (index $popts "path") -}}{{- end -}}
       {{- if index $popts "tls" -}}{{- $opts = printf "%s;tls" $opts -}}{{- end -}}
       {{- $_ := set $out "plugin_opts" $opts -}}
+    {{- else if eq $plugin "shadow-tls" -}}
+      {{- /* sing-box 以独立 shadowtls outbound + ss detour 链式实现, 而非 ss 插件 */ -}}
+      {{- $stTag := printf "%s-shadowtls" $p.Name -}}
+      {{- $stTLS := dict "enabled" true "insecure" true -}}
+      {{- if index $popts "host" -}}{{- $_ := set $stTLS "server_name" (index $popts "host") -}}{{- end -}}
+      {{- if index $popts "alpn" -}}{{- $_ := set $stTLS "alpn" (index $popts "alpn") -}}{{- end -}}
+      {{- if index $popts "fingerprint" -}}
+        {{- $_ := set $stTLS "utls" (dict "enabled" true "fingerprint" (index $popts "fingerprint")) -}}
+      {{- end -}}
+      {{- $st := dict "type" "shadowtls" "tag" $stTag "server" $server "server_port" $p.Port "version" (int (default 2 (index $popts "version"))) "tls" $stTLS -}}
+      {{- if index $popts "password" -}}{{- $_ := set $st "password" (index $popts "password") -}}{{- end -}}
+      {{- $nodeOutbounds = append $nodeOutbounds $st -}}
+      {{- $_ := set $out "detour" $stTag -}}
+      {{- /* shadowtls 为纯 TCP 链路, UDP 依赖 UoT */ -}}
+      {{- $_ := set $out "udp_over_tcp" true -}}
     {{- end -}}
     {{- if $p.UoT -}}
       {{- $uot := dict "enabled" true -}}
