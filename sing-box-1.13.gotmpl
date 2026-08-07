@@ -1,0 +1,513 @@
+{{- /*
+  sing-box 1.13 订阅模板（PerfectPanel）
+  适用: sing-box 1.13.x 稳定版（1.14 请用 sing-box-1.14.gotmpl）
+  说明:
+    - outbound 全部用 dict+toJson 生成，节点名含引号/反斜杠不会破坏 JSON。
+    - 协议覆盖: shadowsocks(含 2022/obfs/v2ray-plugin)、vmess、vless(reality/vision)、
+      trojan、hysteria2(端口跳跃/salamander)、tuic、anytls、naive(需客户端带
+      with_naive_outbound 构建, 官方 GUI 客户端默认包含; 纯 CLI 精简构建会拒绝该配置)。
+      跳过: ssr/mieru(sing-box 不支持)、snell(1.14 起才支持)、
+      xhttp 传输与 vless ML-KEM 加密节点、shadow-tls/restls/kcptun 插件节点。
+*/ -}}
+{{- $GiB := 1073741824.0 -}}
+{{- $used := printf "%.2f" (divf (add (.UserInfo.Download | default 0 | float64) (.UserInfo.Upload | default 0 | float64)) $GiB) -}}
+{{- $traffic := (.UserInfo.Traffic | default 0 | float64) -}}
+{{- $total := printf "%.2f" (divf $traffic $GiB) -}}
+
+{{- $ExpiredAt := "" -}}
+{{- $expStr := printf "%v" .UserInfo.ExpiredAt -}}
+{{- if regexMatch `^[0-9]+$` $expStr -}}
+  {{- $ts := $expStr | float64 -}}
+  {{- $sec := ternary (divf $ts 1000.0) $ts (ge (len $expStr) 13) -}}
+  {{- $ExpiredAt = (date "2006-01-02 15:04:05" (unixEpoch ($sec | int64))) -}}
+{{- else -}}
+  {{- $ExpiredAt = $expStr -}}
+{{- end -}}
+
+{{- /* ---- 排序: Sort / Port / Name 升序 ---- */ -}}
+{{- $byKey := dict -}}
+{{- range $p := .Proxies -}}
+  {{- $keyParts := list -}}
+  {{- range $field := list "Sort" "Port" "Name" -}}
+    {{- $val := default "" (printf "%v" (index $p $field)) -}}
+    {{- if or (eq $field "Sort") (eq $field "Port") -}}
+      {{- $val = printf "%08d" (int (default 0 (index $p $field))) -}}
+    {{- end -}}
+    {{- $keyParts = append $keyParts $val -}}
+  {{- end -}}
+  {{- $_ := set $byKey (join "|" $keyParts) $p -}}
+{{- end -}}
+{{- $sorted := list -}}
+{{- range $k := sortAlpha (keys $byKey) -}}
+  {{- $sorted = append $sorted (index $byKey $k) -}}
+{{- end -}}
+
+{{- /* ---- 过滤 sing-box 1.13 可用节点, 并按 tag 去重 ---- */ -}}
+{{- $reserved := dict "节点选择" true "自动选择" true "直连" true "国内" true "Github" true "Google" true "Microsoft" true "OpenAI" true "Telegram" true "Twitter" true "Youtube" true -}}
+{{- $seen := dict -}}
+{{- $supported := list -}}
+{{- range $p := $sorted -}}
+  {{- $t := lower (default "" $p.Type) -}}
+  {{- $tr := lower (default "" $p.Transport) -}}
+  {{- $ok := false -}}
+  {{- if or (eq $t "hysteria") (eq $t "hysteria2") (eq $t "hy2") (eq $t "tuic") (eq $t "anytls") (eq $t "naive") -}}
+    {{- $ok = true -}}
+  {{- else if or (eq $t "vmess") (eq $t "trojan") -}}
+    {{- $ok = (ne $tr "xhttp") -}}
+  {{- else if eq $t "vless" -}}
+    {{- $enc := lower (default "" $p.Encryption) -}}
+    {{- $ok = and (or (eq $enc "") (eq $enc "none")) (ne $tr "xhttp") -}}
+  {{- else if eq $t "shadowsocks" -}}
+    {{- $plugin := lower (default "" $p.Plugin) -}}
+    {{- $ok = or (eq $plugin "") (eq $plugin "obfs") (eq $plugin "v2ray-plugin") -}}
+  {{- end -}}
+  {{- if and $ok (not (hasKey $seen $p.Name)) (not (hasKey $reserved $p.Name)) -}}
+    {{- $_ := set $seen $p.Name true -}}
+    {{- $supported = append $supported $p -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* ---- 生成节点 outbound ---- */ -}}
+{{- $pwd := .UserInfo.Password -}}
+{{- $nodeOutbounds := list -}}
+{{- $names := list -}}
+{{- range $p := $supported -}}
+  {{- $t := lower $p.Type -}}
+  {{- $tr := lower (default "" $p.Transport) -}}
+  {{- $sec := lower (default "" $p.Security) -}}
+  {{- $server := trimAll "[]" $p.Server -}}
+  {{- $isQuic := or (eq $t "hysteria") (eq $t "hysteria2") (eq $t "hy2") (eq $t "tuic") -}}
+
+  {{- /* TLS: QUIC 系协议强制启用; 其余按 security 判断 */ -}}
+  {{- $tls := dict -}}
+  {{- if or $isQuic (eq $sec "tls") (eq $sec "reality") -}}
+    {{- $tls = dict "enabled" true -}}
+    {{- if $p.SNI -}}{{- $_ := set $tls "server_name" $p.SNI -}}{{- end -}}
+    {{- /* 写死跳过证书校验(含自签名/证书哈希 pin 场景, sing-box 不支持证书哈希 pin) */ -}}
+    {{- $_ := set $tls "insecure" true -}}
+    {{- if gt (len $p.ALPN) 0 -}}{{- $_ := set $tls "alpn" $p.ALPN -}}{{- end -}}
+    {{- if $p.EchEnable -}}
+      {{- $ech := dict "enabled" true -}}
+      {{- if $p.EchServerName -}}{{- $_ := set $ech "query_server_name" $p.EchServerName -}}{{- end -}}
+      {{- $_ := set $tls "ech" $ech -}}
+    {{- end -}}
+    {{- if eq $sec "reality" -}}
+      {{- $reality := dict "enabled" true "public_key" (default "" $p.RealityPublicKey) -}}
+      {{- if $p.RealityShortId -}}{{- $_ := set $reality "short_id" $p.RealityShortId -}}{{- end -}}
+      {{- $_ := set $tls "reality" $reality -}}
+      {{- $_ := set $tls "utls" (dict "enabled" true "fingerprint" (default "chrome" $p.Fingerprint)) -}}
+    {{- /* naive 由 cronet(Chromium 网络栈)处理 TLS, 不适用 uTLS */ -}}
+    {{- else if and $p.Fingerprint (not $isQuic) (ne $t "naive") -}}
+      {{- $_ := set $tls "utls" (dict "enabled" true "fingerprint" $p.Fingerprint) -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- /* v2ray 传输层 (vmess/vless/trojan) */ -}}
+  {{- $transport := dict -}}
+  {{- if or (eq $tr "ws") (eq $tr "websocket") -}}
+    {{- $transport = dict "type" "ws" "path" (default "/" $p.Path) -}}
+    {{- if $p.Host -}}{{- $_ := set $transport "headers" (dict "Host" $p.Host) -}}{{- end -}}
+  {{- else if eq $tr "grpc" -}}
+    {{- $transport = dict "type" "grpc" "service_name" (default "grpc" $p.ServiceName) -}}
+  {{- else if eq $tr "httpupgrade" -}}
+    {{- $transport = dict "type" "httpupgrade" "path" (default "/" $p.Path) -}}
+    {{- if $p.Host -}}{{- $_ := set $transport "host" $p.Host -}}{{- end -}}
+  {{- end -}}
+
+  {{- /* sing-box 多路复用 */ -}}
+  {{- $mux := dict -}}
+  {{- $muxProto := lower (default "" $p.Multiplex) -}}
+  {{- if or (eq $muxProto "smux") (eq $muxProto "yamux") (eq $muxProto "h2mux") -}}
+    {{- $mux = dict "enabled" true "protocol" $muxProto -}}
+  {{- end -}}
+
+  {{- $out := dict "tag" $p.Name "server" $server "server_port" $p.Port -}}
+
+  {{- if eq $t "shadowsocks" -}}
+    {{- $_ := set $out "type" "shadowsocks" -}}
+    {{- $_ := set $out "method" (default "aes-128-gcm" $p.Method) -}}
+    {{- $password := $pwd -}}
+    {{- if $p.ServerKey -}}
+      {{- $needBytes := ternary 16 32 (eq $p.Method "2022-blake3-aes-128-gcm") -}}
+      {{- $cutLen := min $needBytes (len $pwd) | int -}}
+      {{- $password = printf "%s:%s" (b64enc $p.ServerKey) (b64enc ($pwd | trunc $cutLen)) -}}
+    {{- end -}}
+    {{- $_ := set $out "password" $password -}}
+    {{- $plugin := lower (default "" $p.Plugin) -}}
+    {{- $popts := default dict $p.PluginOptions -}}
+    {{- if eq $plugin "obfs" -}}
+      {{- $_ := set $out "plugin" "obfs-local" -}}
+      {{- $opts := printf "obfs=%s" (default "http" (index $popts "mode")) -}}
+      {{- if index $popts "host" -}}{{- $opts = printf "%s;obfs-host=%s" $opts (index $popts "host") -}}{{- end -}}
+      {{- $_ := set $out "plugin_opts" $opts -}}
+    {{- else if eq $plugin "v2ray-plugin" -}}
+      {{- $_ := set $out "plugin" "v2ray-plugin" -}}
+      {{- $opts := "mode=websocket" -}}
+      {{- if index $popts "host" -}}{{- $opts = printf "%s;host=%s" $opts (index $popts "host") -}}{{- end -}}
+      {{- if index $popts "path" -}}{{- $opts = printf "%s;path=%s" $opts (index $popts "path") -}}{{- end -}}
+      {{- if index $popts "tls" -}}{{- $opts = printf "%s;tls" $opts -}}{{- end -}}
+      {{- $_ := set $out "plugin_opts" $opts -}}
+    {{- end -}}
+    {{- if $p.UoT -}}
+      {{- $uot := dict "enabled" true -}}
+      {{- if $p.UoTVersion -}}{{- $_ := set $uot "version" $p.UoTVersion -}}{{- end -}}
+      {{- $_ := set $out "udp_over_tcp" $uot -}}
+    {{- end -}}
+    {{- if $mux.enabled -}}{{- $_ := set $out "multiplex" $mux -}}{{- end -}}
+
+  {{- else if eq $t "vmess" -}}
+    {{- $_ := set $out "type" "vmess" -}}
+    {{- $_ := set $out "uuid" $pwd -}}
+    {{- $_ := set $out "security" "auto" -}}
+    {{- if $transport.type -}}{{- $_ := set $out "transport" $transport -}}{{- end -}}
+    {{- if $tls.enabled -}}{{- $_ := set $out "tls" $tls -}}{{- end -}}
+    {{- if $mux.enabled -}}{{- $_ := set $out "multiplex" $mux -}}{{- end -}}
+
+  {{- else if eq $t "vless" -}}
+    {{- $_ := set $out "type" "vless" -}}
+    {{- $_ := set $out "uuid" $pwd -}}
+    {{- if $p.Flow -}}{{- $_ := set $out "flow" $p.Flow -}}{{- end -}}
+    {{- if $transport.type -}}{{- $_ := set $out "transport" $transport -}}{{- end -}}
+    {{- if $tls.enabled -}}{{- $_ := set $out "tls" $tls -}}{{- end -}}
+    {{- /* vision flow 与 multiplex 互斥 */ -}}
+    {{- if and $mux.enabled (not $p.Flow) -}}{{- $_ := set $out "multiplex" $mux -}}{{- end -}}
+
+  {{- else if eq $t "trojan" -}}
+    {{- $_ := set $out "type" "trojan" -}}
+    {{- $_ := set $out "password" $pwd -}}
+    {{- if $transport.type -}}{{- $_ := set $out "transport" $transport -}}{{- end -}}
+    {{- if $tls.enabled -}}{{- $_ := set $out "tls" $tls -}}{{- end -}}
+    {{- if $mux.enabled -}}{{- $_ := set $out "multiplex" $mux -}}{{- end -}}
+
+  {{- else if or (eq $t "hysteria") (eq $t "hysteria2") (eq $t "hy2") -}}
+    {{- $_ := set $out "type" "hysteria2" -}}
+    {{- $_ := set $out "password" $pwd -}}
+    {{- if $p.ObfsPassword -}}
+      {{- $_ := set $out "obfs" (dict "type" "salamander" "password" $p.ObfsPassword) -}}
+    {{- end -}}
+    {{- if $p.HopPorts -}}
+      {{- $ports := list -}}
+      {{- range $seg := splitList "," $p.HopPorts -}}
+        {{- $seg = trim $seg -}}
+        {{- if $seg -}}
+          {{- /* sing-box server_ports 只接受 "起:止" 区间, 单端口需展开为 N:N */ -}}
+          {{- if contains "-" $seg -}}
+            {{- $ports = append $ports (replace "-" ":" $seg) -}}
+          {{- else -}}
+            {{- $ports = append $ports (printf "%s:%s" $seg $seg) -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+      {{- if gt (len $ports) 0 -}}
+        {{- $_ := set $out "server_ports" $ports -}}
+        {{- if $p.HopInterval -}}{{- $_ := set $out "hop_interval" (printf "%ds" (int $p.HopInterval)) -}}{{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if $p.UpMbps -}}{{- $_ := set $out "up_mbps" $p.UpMbps -}}{{- end -}}
+    {{- if $p.DownMbps -}}{{- $_ := set $out "down_mbps" $p.DownMbps -}}{{- end -}}
+    {{- $_ := set $out "tls" $tls -}}
+
+  {{- else if eq $t "tuic" -}}
+    {{- $_ := set $out "type" "tuic" -}}
+    {{- $_ := set $out "uuid" (default "" $p.ServerKey) -}}
+    {{- $_ := set $out "password" $pwd -}}
+    {{- if $p.CongestionController -}}{{- $_ := set $out "congestion_control" $p.CongestionController -}}{{- end -}}
+    {{- if $p.UDPRelayMode -}}{{- $_ := set $out "udp_relay_mode" $p.UDPRelayMode -}}{{- end -}}
+    {{- if $p.ReduceRtt -}}{{- $_ := set $out "zero_rtt_handshake" true -}}{{- end -}}
+    {{- if $p.Heartbeat -}}{{- $_ := set $out "heartbeat" (printf "%ds" (int $p.Heartbeat)) -}}{{- end -}}
+    {{- if $p.DisableSNI -}}{{- $_ := set $tls "disable_sni" true -}}{{- end -}}
+    {{- if not $tls.alpn -}}{{- $_ := set $tls "alpn" (list "h3") -}}{{- end -}}
+    {{- $_ := set $out "tls" $tls -}}
+
+  {{- else if eq $t "anytls" -}}
+    {{- $_ := set $out "type" "anytls" -}}
+    {{- $_ := set $out "password" $pwd -}}
+    {{- $_ := set $out "tls" $tls -}}
+
+  {{- else if eq $t "naive" -}}
+    {{- $_ := set $out "type" "naive" -}}
+    {{- $_ := set $out "username" (printf "%v" $.UserInfo.ID) -}}
+    {{- $_ := set $out "password" $pwd -}}
+    {{- /* 面板 Network=udp 表示 QUIC(h3) 监听, 否则走 TCP(h2) */ -}}
+    {{- $net := lower (default "" $p.Network) -}}
+    {{- if or (eq $net "udp") (eq $net "quic") -}}
+      {{- $_ := set $out "quic" true -}}
+      {{- if $p.QUICCongestionControl -}}{{- $_ := set $out "quic_congestion_control" $p.QUICCongestionControl -}}{{- end -}}
+    {{- end -}}
+    {{- $_ := set $out "tls" $tls -}}
+  {{- end -}}
+
+  {{- $nodeOutbounds = append $nodeOutbounds $out -}}
+  {{- $names = append $names $p.Name -}}
+{{- end -}}
+
+{{- /* ---- 策略组 ---- */ -}}
+{{- $hasNodes := gt (len $names) 0 -}}
+{{- $groups := list -}}
+{{- $mainList := list -}}
+{{- if $hasNodes -}}{{- $mainList = list "自动选择" -}}{{- end -}}
+{{- $mainList = concat $mainList $names (list "直连") -}}
+{{- $groups = append $groups (dict "tag" "节点选择" "type" "selector" "outbounds" $mainList) -}}
+{{- if $hasNodes -}}
+  {{- $groups = append $groups (dict "tag" "自动选择" "type" "urltest" "outbounds" $names "interval" "5m") -}}
+{{- end -}}
+{{- range $g := list "Github" "Google" "Microsoft" "OpenAI" "Telegram" "Twitter" "Youtube" -}}
+  {{- $groups = append $groups (dict "tag" $g "type" "selector" "outbounds" (concat (list "节点选择" "直连") $names)) -}}
+{{- end -}}
+{{- $groups = append $groups (dict "tag" "国内" "type" "selector" "outbounds" (concat (list "直连" "节点选择") $names)) -}}
+{{- $allOutbounds := concat $groups $nodeOutbounds (list (dict "tag" "直连" "type" "direct")) -}}
+// {{ .SiteName }} - {{ .SubscribeName }} | 已用 {{ $used }} GiB / 共 {{ $total }} GiB | 到期: {{ $ExpiredAt }}
+// 适用 sing-box 1.13.x
+{
+  "log": {
+    "level": "info",
+    "timestamp": true
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "store_fakeip": true,
+      "store_rdrc": true
+    },
+    "clash_api": {
+      "external_controller": "127.0.0.1:9090",
+      "access_control_allow_origin": [
+        "http://127.0.0.1",
+        "https://yacd.metacubex.one",
+        "https://metacubex.github.io",
+        "https://metacubexd.pages.dev",
+        "https://board.zash.run.place"
+      ]
+    }
+  },
+  "dns": {
+    "independent_cache": true,
+    "servers": [
+      {
+        "tag": "google",
+        "type": "https",
+        "server": "8.8.8.8",
+        "detour": "节点选择"
+      },
+      {
+        "tag": "ali",
+        "type": "https",
+        "server": "223.5.5.5"
+      },
+      {
+        "tag": "fakeip",
+        "type": "fakeip",
+        "inet4_range": "198.18.0.0/15",
+        "inet6_range": "fc00::/18"
+      }
+    ],
+    "rules": [
+      {
+        "clash_mode": "Direct",
+        "server": "ali"
+      },
+      {
+        "clash_mode": "Global",
+        "server": "google"
+      },
+      {
+        "rule_set": "geosite-cn",
+        "server": "ali"
+      },
+      {
+        "query_type": [
+          "A",
+          "AAAA"
+        ],
+        "server": "fakeip"
+      }
+    ]
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "address": [
+        "172.18.0.1/30",
+        "fdfe:dcba:9876::1/126"
+      ],
+      "auto_route": true,
+      "strict_route": true
+    },
+    {
+      "type": "mixed",
+      "listen": "::",
+      "listen_port": 7890
+    }
+  ],
+  "outbounds": {{ toPrettyJson $allOutbounds }},
+  "route": {
+    "auto_detect_interface": true,
+    "default_domain_resolver": {
+      "server": "ali"
+    },
+    "final": "节点选择",
+    "rules": [
+      {
+        "action": "sniff"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      },
+      {
+        "ip_is_private": true,
+        "outbound": "直连"
+      },
+      {
+        "rule_set": "anti-ad",
+        "clash_mode": "Rule",
+        "action": "reject"
+      },
+      {
+        "clash_mode": "Direct",
+        "outbound": "直连"
+      },
+      {
+        "clash_mode": "Global",
+        "outbound": "节点选择"
+      },
+      {
+        "rule_set": "geosite-github",
+        "outbound": "Github"
+      },
+      {
+        "rule_set": [
+          "geoip-google",
+          "geosite-google"
+        ],
+        "outbound": "Google"
+      },
+      {
+        "rule_set": "geosite-microsoft",
+        "outbound": "Microsoft"
+      },
+      {
+        "rule_set": "geosite-openai",
+        "outbound": "OpenAI"
+      },
+      {
+        "rule_set": [
+          "geoip-telegram",
+          "geosite-telegram"
+        ],
+        "outbound": "Telegram"
+      },
+      {
+        "rule_set": [
+          "geoip-twitter",
+          "geosite-twitter"
+        ],
+        "outbound": "Twitter"
+      },
+      {
+        "rule_set": "geosite-youtube",
+        "outbound": "Youtube"
+      },
+      {
+        "rule_set": [
+          "geoip-cn",
+          "geosite-cn"
+        ],
+        "outbound": "国内"
+      }
+    ],
+    "rule_set": [
+      {
+        "tag": "anti-ad",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://anti-ad.net/anti-ad-sing-box.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geosite-github",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/github.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geoip-google",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geoip/google.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geosite-google",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/google.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geosite-microsoft",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/microsoft.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geosite-openai",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/openai.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geoip-telegram",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geoip/telegram.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geosite-telegram",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/telegram.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geoip-twitter",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geoip/twitter.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geosite-twitter",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/twitter.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geosite-youtube",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/youtube.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geosite-cn",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/cn.srs",
+        "download_detour": "直连"
+      },
+      {
+        "tag": "geoip-cn",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geoip/cn.srs",
+        "download_detour": "直连"
+      }
+    ]
+  }
+}
