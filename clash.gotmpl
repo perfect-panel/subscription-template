@@ -68,7 +68,6 @@ log-level: info
 unified-delay: true
 tcp-concurrent: true
 external-controller: '0.0.0.0:9090'
-global-client-fingerprint: chrome
 tun:
   enable: true
   stack: system
@@ -154,11 +153,14 @@ proxies:
   password: {{ $password }}
   udp: true
   tfo: true
-  {{- if ne (default "" $proxy.Obfs) "" }}
+  {{- $obfsMode := default "" $proxy.Obfs -}}
+  {{- if and (ne $obfsMode "") (ne $obfsMode "none") }}
   plugin: obfs
   plugin-opts:
-    mode: {{ $proxy.Obfs }}
-    host: {{ default "" $proxy.ObfsHost }}
+    mode: {{ $obfsMode }}
+    {{- if ne (default "" $proxy.ObfsHost) "" }}
+    host: {{ $proxy.ObfsHost }}
+    {{- end }}
   {{- end }}
 {{- else if eq $proxy.Type "vmess" }}
 - name: {{ $proxy.Name | quote }}
@@ -536,9 +538,10 @@ proxies:
   reuse: true
   udp: true
   tfo: true
-  {{- if ne (default "" $proxy.Obfs) "" }}
+  {{- $obfsMode := default "" $proxy.Obfs -}}
+  {{- if and (ne $obfsMode "") (ne $obfsMode "none") }}
   obfs-opts:
-    mode: {{ $proxy.Obfs }}
+    mode: {{ $obfsMode }}
     {{- if ne (default "" $proxy.ObfsHost) "" }}
     host: {{ $proxy.ObfsHost }}
     {{- end }}
