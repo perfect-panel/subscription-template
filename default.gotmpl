@@ -369,6 +369,8 @@ anytls://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#
   {{- $params = append $params (printf "allowInsecure=%s" $insecureFlag) -}}
   {{- $params = append $params "type=tcp" -}}
   {{- $params = append $params "headerType=none" -}}
+  {{- /* 节点端无条件解 UoT，客户端强制启用 v2 以代理 UDP */ -}}
+  {{- $params = append $params "uot=2" -}}
   {{- $user := default (default $password $proxy.Username) $.UserInfo.ID }}
 naive+https://{{ $user }}:{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- else if or (eq $proxy.Type "http") (eq $proxy.Type "https") }}

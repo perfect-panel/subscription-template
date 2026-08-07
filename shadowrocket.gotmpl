@@ -382,6 +382,8 @@ snell://{{ $psk }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $pr
   {{- $params := list "alpn=h2" -}}
   {{- $params = append $params (printf "peer=%s" (default $proxy.Server $proxy.SNI)) -}}
   {{- $params = append $params "padding=1" -}}
+  {{- /* 节点端无条件解 UoT，客户端强制启用 v2 以代理 UDP */ -}}
+  {{- $params = append $params "uot=2" -}}
   {{- $params = append $params (printf "fingerprint=%s" (default "Chrome" $proxy.Fingerprint)) -}}
   {{- if $SkipVerify -}}
     {{- $params = append $params "allowInsecure=1" -}}
