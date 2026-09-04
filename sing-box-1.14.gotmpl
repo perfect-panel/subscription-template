@@ -4,6 +4,8 @@
   说明:
     - 使用 1.14 新配置: store_dns、显式 http_clients + route.default_http_client
       （替代已弃用的 rule_set.download_detour / independent_cache / store_rdrc），无弃用告警。
+      注意: 默认 http_client 不要写 detour 指向纯 direct 出站——1.14 会拒绝
+      "detour to an empty direct outbound"；不写 detour 客户端即自行直连拨号，效果相同。
     - outbound 全部用 dict+toJson 生成，节点名含引号/反斜杠不会破坏 JSON。
     - 协议覆盖: shadowsocks(含 2022/obfs/v2ray-plugin/shadow-tls 链式)、vmess、
       vless(reality/vision)、trojan、hysteria2(端口跳跃/salamander)、tuic、anytls、
@@ -323,8 +325,7 @@
   },
   "http_clients": [
     {
-      "tag": "default",
-      "detour": "直连"
+      "tag": "default"
     }
   ],
   "dns": {
