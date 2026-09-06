@@ -1,0 +1,220 @@
+{{- /*
+  Anywhere 订阅模板（PerfectPanel）
+  适用: Anywhere (iOS/iPadOS/tvOS, 纯 Swift 原生客户端); 面板订阅应用 UA 匹配填 anywhere。
+  输出: 分享链接列表（面板按 OutputFormat 决定是否整体 base64，客户端两者皆可解析）。
+  说明:
+    - 客户端订阅解析仅认 nowhere/vless/hysteria2/hy2/trojan/anytls/ss/socks5/socks/sudoku 前缀，
+      每行单独解析、失败仅丢弃该行。
+    - 协议覆盖: nowhere(mix 网络不下发参数, 由客户端默认 udp/udp)、
+      shadowsocks(仅 aes-128-gcm/aes-256-gcm/chacha20-ietf-poly1305/none/2022-blake3-*，
+      插件节点跳过——客户端会静默丢弃插件参数，发了也连不上)、
+      vless(tcp/ws/httpupgrade/grpc/xhttp + tls/reality + vision + mlkem768x25519plus 加密)、
+      trojan(仅 TLS/TCP，带传输层的节点跳过)、hysteria2(salamander obfs/Brutal 带宽)、
+      anytls、socks5。
+    - 跳过: vmess/tuic/snell/ssr/mieru(客户端不支持)、naive(naiveproxy)
+      ——客户端 naive 用 https:// 链接，但订阅解析不含该前缀，只能手动添加;
+      http/https/socks5-tls 节点、vless 非 mlkem 加密(如 xor 系)节点。
+    - 链接无法表达、只能静默放弃的面板参数: allowInsecure(链接无按节点跳过证书校验的参数;
+      自签证书节点需用户在客户端设置里打开全局 Allow Insecure, 或在 app 内手动信任证书
+      SHA-256 指纹——面板的 CertPinSHA256 字段无法通过链接下发)、hy2 端口跳跃(HopPorts)、
+      tuic 系参数、anytls 空闲会话调优(ici/it/mis 用默认 30/30/0)。
+    - fp 指纹名为客户端自有格式: 面板 uTLS 名映射 chrome→chrome_133、firefox→firefox_148、
+      safari→safari_26、edge→edge_106，其余省略(客户端默认 chrome_120)。
+*/ -}}
+{{- $GiB := 1073741824.0 -}}
+{{- $used := printf "%.2f" (divf (add (.UserInfo.Download | default 0 | float64) (.UserInfo.Upload | default 0 | float64)) $GiB) -}}
+{{- $traffic := (.UserInfo.Traffic | default 0 | float64) -}}
+{{- $total := printf "%.2f" (divf $traffic $GiB) -}}
+
+{{- $ExpiredAt := "" -}}
+{{- $expStr := printf "%v" .UserInfo.ExpiredAt -}}
+{{- if regexMatch `^[0-9]+$` $expStr -}}
+  {{- $ts := $expStr | float64 -}}
+  {{- $sec := ternary (divf $ts 1000.0) $ts (ge (len $expStr) 13) -}}
+  {{- $ExpiredAt = (date "2006-01-02 15:04:05" (unixEpoch ($sec | int64))) -}}
+{{- else -}}
+  {{- $ExpiredAt = $expStr -}}
+{{- end -}}
+
+{{- /* ---- 排序: Sort / Port / Name 升序 ---- */ -}}
+{{- $byKey := dict -}}
+{{- range $p := .Proxies -}}
+  {{- $keyParts := list -}}
+  {{- range $field := list "Sort" "Port" "Name" -}}
+    {{- $val := default "" (printf "%v" (index $p $field)) -}}
+    {{- if or (eq $field "Sort") (eq $field "Port") -}}
+      {{- $val = printf "%08d" (int (default 0 (index $p $field))) -}}
+    {{- end -}}
+    {{- $keyParts = append $keyParts $val -}}
+  {{- end -}}
+  {{- $_ := set $byKey (join "|" $keyParts) $p -}}
+{{- end -}}
+{{- $sorted := list -}}
+{{- range $k := sortAlpha (keys $byKey) -}}
+  {{- $sorted = append $sorted (index $byKey $k) -}}
+{{- end -}}
+
+{{- /* ---- 过滤 Anywhere 可用节点 ---- */ -}}
+{{- $ssMethods := dict "aes-128-gcm" true "aes-256-gcm" true "chacha20-ietf-poly1305" true "chacha20-poly1305" true "none" true "plain" true "2022-blake3-aes-128-gcm" true "2022-blake3-aes-256-gcm" true "2022-blake3-chacha20-poly1305" true -}}
+{{- $supported := list -}}
+{{- range $p := $sorted -}}
+  {{- $t := lower (default "" $p.Type) -}}
+  {{- $tr := lower (default "" $p.Transport) -}}
+  {{- $sec := lower (default "" $p.Security) -}}
+  {{- $ok := false -}}
+  {{- if or (eq $t "nowhere") (eq $t "hysteria") (eq $t "hysteria2") (eq $t "hy2") (eq $t "anytls") -}}
+    {{- $ok = true -}}
+  {{- else if eq $t "trojan" -}}
+    {{- /* trojan 仅 TLS/TCP, 无传输层 */ -}}
+    {{- $ok = or (eq $tr "") (eq $tr "tcp") -}}
+  {{- else if eq $t "vless" -}}
+    {{- $enc := lower (default "" $p.Encryption) -}}
+    {{- $trOK := or (eq $tr "") (eq $tr "tcp") (eq $tr "ws") (eq $tr "websocket") (eq $tr "grpc") (eq $tr "httpupgrade") (eq $tr "xhttp") -}}
+    {{- $encOK := or (eq $enc "") (eq $enc "none") (eq $enc "mlkem768x25519plus") -}}
+    {{- /* reality 缺 SNI/公钥时客户端导入直接报错, 提前跳过 */ -}}
+    {{- $realityOK := true -}}
+    {{- if eq $sec "reality" -}}
+      {{- $realityOK = and (ne (default "" $p.SNI) "") (ne (default "" $p.RealityPublicKey) "") -}}
+    {{- end -}}
+    {{- $ok = and $trOK $encOK $realityOK -}}
+  {{- else if eq $t "shadowsocks" -}}
+    {{- $ok = and (hasKey $ssMethods (lower (default "" $p.Method))) (eq (default "" $p.Plugin) "") -}}
+  {{- else if or (eq $t "socks") (eq $t "socks5") -}}
+    {{- $ok = true -}}
+  {{- end -}}
+  {{- if $ok -}}
+    {{- $supported = append $supported $p -}}
+  {{- end -}}
+{{- end -}}
+
+REMARKS={{ .SiteName }}-{{ .SubscribeName }}
+STATUS=Traffic: {{ $used }} GiB/{{ $total }} GiB | Expires: {{ $ExpiredAt }}
+
+{{- range $proxy := $supported }}
+  {{- $server := $proxy.Server -}}
+  {{- if and (contains ":" $server) (not (hasPrefix "[" $server)) -}}
+    {{- $server = printf "[%s]" $server -}}
+  {{- end -}}
+  {{- $name := $proxy.Name | urlquery | replace "+" "%20" -}}
+
+  {{- $password := $.UserInfo.Password -}}
+  {{- if and (eq $proxy.Type "shadowsocks") (ne (default "" $proxy.ServerKey) "") -}}
+    {{- /* SS2022: 链接密码位为 base64(服务端公钥):base64(用户子密钥), 用户密钥截断到密钥长度 */ -}}
+    {{- $needBytes := ternary 16 32 (eq $proxy.Method "2022-blake3-aes-128-gcm") -}}
+    {{- $cutLen := min $needBytes (len $password) | int -}}
+    {{- $password = printf "%s:%s" (b64enc $proxy.ServerKey) (b64enc ($password | trunc $cutLen)) -}}
+  {{- end -}}
+
+  {{- /* 公共 TLS 参数: sni/alpn/fp/ech (trojan/anytls/vless 共用) */ -}}
+  {{- $tlsParams := list -}}
+  {{- if ne (default "" $proxy.SNI) "" -}}
+    {{- $tlsParams = append $tlsParams (printf "sni=%s" ($proxy.SNI | urlquery)) -}}
+  {{- end -}}
+  {{- $alpn := default (list) $proxy.ALPN -}}
+  {{- if gt (len $alpn) 0 -}}
+    {{- $tlsParams = append $tlsParams (printf "alpn=%s" (join "," $alpn | urlquery)) -}}
+  {{- end -}}
+  {{- /* 面板 uTLS 指纹名 → Anywhere 指纹名 */ -}}
+  {{- $fpMap := dict "chrome" "chrome_133" "firefox" "firefox_148" "safari" "safari_26" "edge" "edge_106" -}}
+  {{- if hasKey $fpMap (lower (default "" $proxy.Fingerprint)) -}}
+    {{- $tlsParams = append $tlsParams (printf "fp=%s" (index $fpMap (lower $proxy.Fingerprint))) -}}
+  {{- end -}}
+  {{- if $proxy.EchEnable -}}
+    {{- /* ech 值非 base64 配置时仅作开关, 配置走 DNS HTTPS 记录解析 */ -}}
+    {{- $tlsParams = append $tlsParams (printf "ech=%s" (default "1" $proxy.EchServerName | urlquery)) -}}
+  {{- end -}}
+
+  {{- if eq $proxy.Type "nowhere" }}
+    {{- /* nowhere: 面板仅有 Network(mix/tcp/udp)/SNI/单条 ALPN; mix 不下发, 由客户端选默认 udp/udp */ -}}
+    {{- $params := list -}}
+    {{- $nwNet := lower (default "" $proxy.Network) -}}
+    {{- if or (eq $nwNet "tcp") (eq $nwNet "udp") -}}
+      {{- $params = append $params (printf "net=%s" $nwNet) -}}
+    {{- end -}}
+    {{- if and (ne (default "" $proxy.SNI) "") (ne $proxy.SNI $proxy.Server) -}}
+      {{- $params = append $params (printf "sni=%s" ($proxy.SNI | urlquery)) -}}
+    {{- end -}}
+    {{- if gt (len $alpn) 0 -}}
+      {{- $params = append $params (printf "alpn=%s" (index $alpn 0 | urlquery)) -}}
+    {{- end -}}
+    {{- $query := join "&" $params }}
+nowhere://{{ $password }}@{{ $server }}:{{ $proxy.Port }}{{ if $query }}?{{ $query }}{{ end }}#{{ $name }}
+  {{- else if eq $proxy.Type "shadowsocks" }}
+ss://{{ printf "%s:%s" (default "aes-128-gcm" $proxy.Method) $password | b64enc | trimAll "=" }}@{{ $server }}:{{ $proxy.Port }}/#{{ $name }}
+  {{- else if eq $proxy.Type "vless" }}
+    {{- $params := list -}}
+    {{- /* mlkem768x25519plus 加密: 面板分字段拼装为点分线格式 <xor>.<rtt>[.<padding>].<key> */ -}}
+    {{- $enc := default "none" $proxy.Encryption -}}
+    {{- if and (ne $enc "") (ne $enc "none") -}}
+      {{- $encParts := list $enc -}}
+      {{- if ne (default "" $proxy.EncryptionMode) "" -}}{{- $encParts = append $encParts $proxy.EncryptionMode -}}{{- end -}}
+      {{- if ne (default "" $proxy.EncryptionRtt) "" -}}{{- $encParts = append $encParts $proxy.EncryptionRtt -}}{{- end -}}
+      {{- if ne (default "" $proxy.EncryptionClientPadding) "" -}}{{- $encParts = append $encParts $proxy.EncryptionClientPadding -}}{{- end -}}
+      {{- if ne (default "" $proxy.EncryptionPassword) "" -}}{{- $encParts = append $encParts $proxy.EncryptionPassword -}}{{- end -}}
+      {{- $params = append $params (printf "encryption=%s" (join "." $encParts)) -}}
+    {{- end -}}
+    {{- if and (ne (default "" $proxy.Flow) "") (ne $proxy.Flow "none") -}}
+      {{- $params = append $params (printf "flow=%s" $proxy.Flow) -}}
+    {{- end -}}
+    {{- $sec := lower (default "" $proxy.Security) -}}
+    {{- if or (eq $sec "tls") (eq $sec "reality") -}}
+      {{- $params = append $params (printf "security=%s" $sec) -}}
+    {{- end -}}
+    {{- if eq $sec "reality" -}}
+      {{- $params = append $params (printf "sni=%s" ($proxy.SNI | urlquery)) -}}
+      {{- $params = append $params (printf "pbk=%s" $proxy.RealityPublicKey) -}}
+      {{- if ne (default "" $proxy.RealityShortId) "" -}}
+        {{- $params = append $params (printf "sid=%s" $proxy.RealityShortId) -}}
+      {{- end -}}
+      {{- range $param := $tlsParams -}}
+        {{- if not (hasPrefix "sni=" $param) -}}{{- $params = append $params $param -}}{{- end -}}
+      {{- end -}}
+    {{- else -}}
+      {{- $params = concat $params $tlsParams -}}
+    {{- end -}}
+    {{- $tr := lower (default "tcp" $proxy.Transport) -}}
+    {{- if eq $tr "websocket" -}}{{- $tr = "ws" -}}{{- end -}}
+    {{- if ne $tr "tcp" -}}
+      {{- $params = append $params (printf "type=%s" $tr) -}}
+      {{- if or (eq $tr "ws") (eq $tr "httpupgrade") (eq $tr "xhttp") -}}
+        {{- if ne (default "" $proxy.Host) "" -}}{{- $params = append $params (printf "host=%s" ($proxy.Host | urlquery)) -}}{{- end -}}
+        {{- if ne (default "" $proxy.Path) "" -}}{{- $params = append $params (printf "path=%s" ($proxy.Path | urlquery | replace "+" "%20")) -}}{{- end -}}
+      {{- else if eq $tr "grpc" -}}
+        {{- if ne (default "" $proxy.ServiceName) "" -}}{{- $params = append $params (printf "serviceName=%s" ($proxy.ServiceName | urlquery)) -}}{{- end -}}
+      {{- end -}}
+      {{- if eq $tr "xhttp" -}}
+        {{- if ne (default "" $proxy.XhttpMode) "" -}}{{- $params = append $params (printf "mode=%s" $proxy.XhttpMode) -}}{{- end -}}
+        {{- if ne (default "" $proxy.XhttpExtra) "" -}}{{- $params = append $params (printf "extra=%s" ($proxy.XhttpExtra | urlquery | replace "+" "%20")) -}}{{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $query := join "&" $params }}
+vless://{{ $password }}@{{ $server }}:{{ $proxy.Port }}{{ if $query }}?{{ $query }}{{ end }}#{{ $name }}
+  {{- else if eq $proxy.Type "trojan" }}
+    {{- $query := join "&" $tlsParams }}
+trojan://{{ $password }}@{{ $server }}:{{ $proxy.Port }}{{ if $query }}?{{ $query }}{{ end }}#{{ $name }}
+  {{- else if or (eq $proxy.Type "hysteria2") (eq $proxy.Type "hysteria") (eq $proxy.Type "hy2") }}
+    {{- $params := list -}}
+    {{- if ne (default "" $proxy.SNI) "" -}}
+      {{- $params = append $params (printf "sni=%s" ($proxy.SNI | urlquery)) -}}
+    {{- end -}}
+    {{- if ne (default "" $proxy.ObfsPassword) "" -}}
+      {{- $params = append $params "obfs=salamander" -}}
+      {{- $params = append $params (printf "obfs-password=%s" ($proxy.ObfsPassword | urlquery | replace "+" "%20")) -}}
+    {{- end -}}
+    {{- /* 带宽参数存在即切换 Brutal 拥塞控制, 缺省为 BBR; 只下发正值 */ -}}
+    {{- if gt (int (default 0 $proxy.UpMbps)) 0 -}}
+      {{- $params = append $params (printf "upmbps=%d" (int $proxy.UpMbps)) -}}
+    {{- end -}}
+    {{- if gt (int (default 0 $proxy.DownMbps)) 0 -}}
+      {{- $params = append $params (printf "downmbps=%d" (int $proxy.DownMbps)) -}}
+    {{- end -}}
+    {{- $query := join "&" $params }}
+hysteria2://{{ $password }}@{{ $server }}:{{ $proxy.Port }}{{ if $query }}?{{ $query }}{{ end }}#{{ $name }}
+  {{- else if eq $proxy.Type "anytls" }}
+    {{- $query := join "&" $tlsParams }}
+anytls://{{ $password }}@{{ $server }}:{{ $proxy.Port }}{{ if $query }}?{{ $query }}{{ end }}#{{ $name }}
+  {{- else if or (eq $proxy.Type "socks") (eq $proxy.Type "socks5") }}
+    {{- $user := default $password $proxy.Username }}
+socks5://{{- if or (ne (default "" $user) "") (ne (default "" $password) "") -}}{{ ($user | urlquery) }}:{{ $password | urlquery }}@{{- end -}}{{ $server }}:{{ $proxy.Port }}#{{ $name }}
+  {{- end }}
+{{- end }}
