@@ -32,6 +32,9 @@
   {{- $ts := $expStr | float64 -}}
   {{- $sec := ternary (divf $ts 1000.0) $ts (ge (len $expStr) 13) -}}
   {{- $ExpiredAt = (date "2006-01-02 15:04:05" (unixEpoch ($sec | int64))) -}}
+{{- else if eq (printf "%T" .UserInfo.ExpiredAt) "time.Time" -}}
+  {{- /* 后端下发 time.Time: %v 会带纳秒和时区名, 重新格式化 */ -}}
+  {{- $ExpiredAt = date "2006-01-02 15:04:05" .UserInfo.ExpiredAt -}}
 {{- else -}}
   {{- $ExpiredAt = $expStr -}}
 {{- end -}}
