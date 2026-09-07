@@ -43,7 +43,7 @@
 {{- end -}}
 
 {{- /* ---- 过滤 sing-box 1.12 可用节点, 并按 tag 去重 ---- */ -}}
-{{- $reserved := dict "节点选择" true "自动选择" true "直连" true "国内" true "Github" true "Google" true "Microsoft" true "OpenAI" true "Telegram" true "Twitter" true "Youtube" true -}}
+{{- $reserved := dict "节点选择" true "自动选择" true "直连" true "国内" true "Github" true "Google" true "Microsoft" true "AI" true "Telegram" true "Twitter" true "Youtube" true -}}
 {{- $seen := dict -}}
 {{- $supported := list -}}
 {{- range $p := $sorted -}}
@@ -251,7 +251,7 @@
 {{- if $hasNodes -}}
   {{- $groups = append $groups (dict "tag" "自动选择" "type" "urltest" "outbounds" $names "interval" "5m") -}}
 {{- end -}}
-{{- range $g := list "Github" "Google" "Microsoft" "OpenAI" "Telegram" "Twitter" "Youtube" -}}
+{{- range $g := list "Github" "Google" "Microsoft" "AI" "Telegram" "Twitter" "Youtube" -}}
   {{- $groups = append $groups (dict "tag" $g "type" "selector" "outbounds" (concat (list "节点选择" "直连") $names)) -}}
 {{- end -}}
 {{- $groups = append $groups (dict "tag" "国内" "type" "selector" "outbounds" (concat (list "直连" "节点选择") $names)) -}}
@@ -387,8 +387,8 @@
         "outbound": "Microsoft"
       },
       {
-        "rule_set": "geosite-openai",
-        "outbound": "OpenAI"
+        "rule_set": "geosite-ai",
+        "outbound": "AI"
       },
       {
         "rule_set": [
@@ -453,10 +453,10 @@
         "download_detour": "直连"
       },
       {
-        "tag": "geosite-openai",
+        "tag": "geosite-ai",
         "type": "remote",
         "format": "binary",
-        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/openai.srs",
+        "url": "https://cdn.jsdmirror.com/gh/perfect-panel/rules/geo/geosite/category-ai-!cn@!cn.srs",
         "download_detour": "直连"
       },
       {
