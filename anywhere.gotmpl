@@ -3,23 +3,25 @@
   适用: Anywhere (iOS/iPadOS/tvOS, 纯 Swift 原生客户端); 面板订阅应用 UA 匹配填 anywhere。
   输出: 分享链接列表（面板按 OutputFormat 决定是否整体 base64，客户端两者皆可解析）。
   说明:
-    - 客户端订阅解析仅认 nowhere/vless/hysteria2/hy2/trojan/anytls/ss/socks5/socks/sudoku 前缀，
+    - 当前客户端订阅解析支持 nowhere/vless/hysteria2/hy2/trojan/anytls/ss/socks5/socks/sudoku/rfc/direct/http/https 前缀，
       每行单独解析、失败仅丢弃该行。
-    - 协议覆盖: nowhere(mix 网络不下发参数, 由客户端默认 udp/udp)、
+    - 协议覆盖: nowhere NW3(使用 UserInfo.NowhereKey, mix 默认 TCP, 显式下发 net/morph)、
       shadowsocks(仅 aes-128-gcm/aes-256-gcm/chacha20-ietf-poly1305/none/2022-blake3-*，
       插件节点跳过——客户端会静默丢弃插件参数，发了也连不上)、
       vless(tcp/ws/httpupgrade/grpc/xhttp + tls/reality + vision + mlkem768x25519plus 加密)、
       trojan(仅 TLS/TCP，带传输层的节点跳过)、hysteria2(salamander obfs/Brutal 带宽)、
       anytls、socks5。
-    - 跳过: vmess/tuic/snell/ssr/mieru(客户端不支持)、naive(naiveproxy)
-      ——客户端 naive 用 https:// 链接，但订阅解析不含该前缀，只能手动添加;
-      http/https/socks5-tls 节点、vless 非 mlkem 加密(如 xor 系)节点。
+    - 跳过: vmess/tuic/snell/ssr/mieru(客户端不支持)、旧版 nowhere、naive(naiveproxy;
+      当前 RFC HTTP CONNECT 不等同于 NaiveProxy)。本模板尚未映射 http/https/socks5-tls
+      节点；vless 非 mlkem 加密(如 xor 系)节点也跳过。
     - 链接无法表达、只能静默放弃的面板参数: allowInsecure(链接无按节点跳过证书校验的参数;
       自签证书节点需用户在客户端设置里打开全局 Allow Insecure, 或在 app 内手动信任证书
       SHA-256 指纹——面板的 CertPinSHA256 字段无法通过链接下发)、hy2 端口跳跃(HopPorts)、
       tuic 系参数、anytls 空闲会话调优(ici/it/mis 用默认 30/30/0)。
+    - Nowhere 链接只读取 net/morph，SNI 与 TLS 证书主机名固定使用节点 Server；
+      不下发无效的 sni/alpn/pin 参数。自签证书需在客户端手动信任指纹。
     - fp 指纹名为客户端自有格式: 面板 uTLS 名映射 chrome→chrome_133、firefox→firefox_148、
-      safari→safari_26、edge→edge_106，其余省略(客户端默认 chrome_120)。
+      safari→safari_26、edge→edge_106，其余省略，由客户端选择默认指纹。
 */ -}}
 {{- $GiB := 1073741824.0 -}}
 {{- $used := printf "%.2f" (divf (add (.UserInfo.Download | default 0 | float64) (.UserInfo.Upload | default 0 | float64)) $GiB) -}}
@@ -65,7 +67,9 @@
   {{- $tr := lower (default "" $p.Transport) -}}
   {{- $sec := lower (default "" $p.Security) -}}
   {{- $ok := false -}}
-  {{- if or (eq $t "nowhere") (eq $t "hysteria") (eq $t "hysteria2") (eq $t "hy2") (eq $t "anytls") -}}
+  {{- if eq $t "nowhere" -}}
+    {{- $ok = eq (int (default 0 $p.Version)) 3 -}}
+  {{- else if or (eq $t "hysteria") (eq $t "hysteria2") (eq $t "hy2") (eq $t "anytls") -}}
     {{- $ok = true -}}
   {{- else if eq $t "trojan" -}}
     {{- /* trojan 仅 TLS/TCP, 无传输层 */ -}}
@@ -128,20 +132,10 @@ STATUS=Traffic: {{ $used }} GiB/{{ $total }} GiB | Expires: {{ $ExpiredAt }}
   {{- end -}}
 
   {{- if eq $proxy.Type "nowhere" }}
-    {{- /* nowhere: 面板仅有 Network(mix/tcp/udp)/SNI/单条 ALPN; mix 不下发, 由客户端选默认 udp/udp */ -}}
-    {{- $params := list -}}
-    {{- $nwNet := lower (default "" $proxy.Network) -}}
-    {{- if or (eq $nwNet "tcp") (eq $nwNet "udp") -}}
-      {{- $params = append $params (printf "net=%s" $nwNet) -}}
-    {{- end -}}
-    {{- if and (ne (default "" $proxy.SNI) "") (ne $proxy.SNI $proxy.Server) -}}
-      {{- $params = append $params (printf "sni=%s" ($proxy.SNI | urlquery)) -}}
-    {{- end -}}
-    {{- if gt (len $alpn) 0 -}}
-      {{- $params = append $params (printf "alpn=%s" (index $alpn 0 | urlquery)) -}}
-    {{- end -}}
-    {{- $query := join "&" $params }}
-nowhere://{{ $password }}@{{ $server }}:{{ $proxy.Port }}{{ if $query }}?{{ $query }}{{ end }}#{{ $name }}
+    {{- /* 与 Anywhere 的 NW3 URL 解析一致：单一载体、Morph 开关，无可配置 TLS 字段。 */ -}}
+    {{- $nwNet := ternary "udp" "tcp" (eq (lower (default "mix" $proxy.Network)) "udp") -}}
+    {{- $morph := ternary "0" "1" (eq (lower (default "morph" $proxy.Obfs)) "none") }}
+nowhere://{{ $.UserInfo.NowhereKey | urlquery }}@{{ $server }}:{{ $proxy.Port }}?net={{ $nwNet }}&morph={{ $morph }}#{{ $name }}
   {{- else if eq $proxy.Type "shadowsocks" }}
 ss://{{ printf "%s:%s" (default "aes-128-gcm" $proxy.Method) $password | b64enc | trimAll "=" }}@{{ $server }}:{{ $proxy.Port }}/#{{ $name }}
   {{- else if eq $proxy.Type "vless" }}

@@ -41,7 +41,7 @@
 {{- range $proxy := $sorted -}}
   {{- if hasKey $supportSet $proxy.Type -}}
     {{- $supportedProxies = append $supportedProxies $proxy -}}
-  {{- else if and (eq $proxy.Type "snell") (eq (int (default 0 $proxy.Version)) 5) -}}
+  {{- else if and (eq $proxy.Type "snell") (or (eq (int (default 0 $proxy.Version)) 5) (eq (int (default 0 $proxy.Version)) 6)) -}}
     {{- $supportedProxies = append $supportedProxies $proxy -}}
   {{- end -}}
 {{- end -}}
@@ -360,6 +360,16 @@ tuic://{{ default "" $proxy.ServerKey }}:{{ $password }}@{{ $server }}:{{ $proxy
   {{- $params = append $params $common }}
 anytls://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
   {{- else if eq $proxy.Type "snell" }}
+  {{- if eq (int $proxy.Version) 6 }}
+  {{- /* Snell v6: method:psk@host:port 整体 base64；mode 取代旧版 obfs 插件。 */ -}}
+  {{- $snellServer := $proxy.Server | trimPrefix "[" | trimSuffix "]" -}}
+  {{- if contains ":" $snellServer -}}
+    {{- $snellServer = printf "[%s]" $snellServer -}}
+  {{- end -}}
+  {{- $userinfo := trimAll "=" (printf "chacha20-ietf-poly1305:%s@%s:%d" $password $snellServer $proxy.Port | b64enc) -}}
+  {{- $mode := default "default" $proxy.Mode }}
+snell://{{ $userinfo }}?tfo=1&version=6&mode={{ $mode | urlquery }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
+  {{- else }}
   {{- $params := list -}}
   {{- /* 混淆走 obfs-local 插件参数，内层分隔符必须编码为 %3D */ -}}
   {{- if ne (default "" $proxy.Obfs) "" -}}
@@ -377,6 +387,7 @@ anytls://{{ $password }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#
   {{- $psk := trimAll "=" (printf "chacha20-ietf-poly1305:%s" $password | b64enc) -}}
   {{- $params = append $params $common }}
 snell://{{ $psk }}@{{ $server }}:{{ $proxy.Port }}?{{ join "&" $params }}#{{ $proxy.Name | urlquery | replace "+" "%20" }}
+  {{- end }}
   {{- else if or (eq $proxy.Type "naive") (eq $proxy.Type "naiveproxy") }}
   {{- /* NaiveProxy：Shadowrocket 以带 padding 的 HTTPS(http2) 代理承载，user:pass@host:port 整体 b64 且去掉填充符 */ -}}
   {{- $params := list "alpn=h2" -}}

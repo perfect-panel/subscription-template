@@ -41,7 +41,9 @@
 {{- range $proxy := $sorted -}}
   {{- if hasKey $supportSet $proxy.Type -}}
     {{- $supportedProxies = append $supportedProxies $proxy -}}
-  {{- else if and (eq $proxy.Type "snell") (eq (int (default 0 $proxy.Version)) 5) -}}
+  {{- else if and (eq $proxy.Type "snell") (or (eq (int (default 0 $proxy.Version)) 5) (eq (int (default 0 $proxy.Version)) 6)) -}}
+    {{- $supportedProxies = append $supportedProxies $proxy -}}
+  {{- else if and (eq $proxy.Type "nowhere") (eq (int (default 0 $proxy.Version)) 3) -}}
     {{- $supportedProxies = append $supportedProxies $proxy -}}
   {{- end -}}
 {{- end -}}
@@ -531,13 +533,16 @@ proxies:
 {{- else if eq $proxy.Type "snell" }}
 - name: {{ $proxy.Name | quote }}
   type: snell
-  server: {{ $server }}
+  server: {{ $proxy.Server | trimPrefix "[" | trimSuffix "]" | quote }}
   port: {{ $proxy.Port }}
-  psk: {{ $password }}
-  version: 5
+  psk: {{ $password | quote }}
+  version: {{ int $proxy.Version }}
   reuse: true
   udp: true
   tfo: true
+  {{- if eq (int $proxy.Version) 6 }}
+  mode: {{ default "default" $proxy.Mode | quote }}
+  {{- else }}
   {{- $obfsMode := default "" $proxy.Obfs -}}
   {{- if and (ne $obfsMode "") (ne $obfsMode "none") }}
   obfs-opts:
@@ -545,6 +550,24 @@ proxies:
     {{- if ne (default "" $proxy.ObfsHost) "" }}
     host: {{ $proxy.ObfsHost }}
     {{- end }}
+  {{- end }}
+  {{- end }}
+{{- else if eq $proxy.Type "nowhere" }}
+  {{- /* NW3 uses a protocol-specific key; mix listeners default to TLS here. */}}
+- name: {{ $proxy.Name | quote }}
+  type: nowhere
+  server: {{ $proxy.Server | trimPrefix "[" | trimSuffix "]" | quote }}
+  port: {{ $proxy.Port }}
+  password: {{ $.UserInfo.NowhereKey | quote }}
+  network: {{ ternary "udp" "tcp" (eq (lower (default "mix" $proxy.Network)) "udp") }}
+  morph: {{ ne (lower (default "morph" $proxy.Obfs)) "none" }}
+  udp: true
+  tfo: true
+  {{- if ne (default "" $proxy.SNI) "" }}
+  sni: {{ $proxy.SNI | quote }}
+  {{- end }}
+  {{- if ne (default "" $proxy.CertPinSHA256) "" }}
+  pin: {{ $proxy.CertPinSHA256 | quote }}
   {{- end }}
 {{- else }}
 - name: {{ $proxy.Name | quote }}
